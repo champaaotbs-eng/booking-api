@@ -1,0 +1,45 @@
+services:
+  booking-ticket-db:
+    image: postgres:17-alpine
+    container_name: booking-ticket-db
+    restart: always
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME}
+      POSTGRES_USER: ${DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    ports:
+      - "${DATABASE_PORT}:${DATABASE_PORT}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME} -d ${DATABASE_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  booking-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: booking-api:latest
+    container_name: booking-api
+    restart: always
+    depends_on:
+      booking-ticket-db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_HOST: booking-ticket-db
+      DATABASE_PORT: ${DATABASE_PORT}
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_TYPE: postgres
+      DATABASE_SSL_MODE: disable
+      DATABASE_CHANNEL_BINDING: disable
+      NODE_ENV: production
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+volumes:
+  postgres_data:

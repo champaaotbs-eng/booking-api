@@ -1,0 +1,75 @@
+import { I18nTranslations } from '@/generated/i18n.generated';
+import { PASSWORD_REGEX } from 'utils/constants';
+import { Transform } from 'class-transformer';
+import {
+  IsDate,
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+} from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
+import { RoleDto } from '@/modules/roles/dto/role.dto';
+import { Role } from '@/modules/roles/role.domain';
+
+export class CreateUserDto {
+  @IsNotEmpty({
+    message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY'),
+  })
+  @IsString()
+  fullName: string;
+
+  @IsEmail(
+    {},
+    {
+      message: i18nValidationMessage<I18nTranslations>(
+        'validation.INVALID_EMAIL',
+      ),
+    },
+  )
+  @IsNotEmpty({
+    message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY'),
+  })
+  email: string;
+
+  @IsString()
+  @Matches(PASSWORD_REGEX, {
+    message: i18nValidationMessage<I18nTranslations>('validation.PASSWORD'),
+  })
+  @IsNotEmpty({
+    message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY'),
+  })
+  password: string;
+
+  @IsNotEmpty({
+    message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY'),
+  })
+  @IsString()
+  address: string;
+
+  @IsNotEmpty({
+    message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY'),
+  })
+  @IsString()
+  phone: string;
+
+  @IsOptional()
+  role: Role;
+
+  @IsOptional()
+  avatarUrl?: string;
+
+  @IsOptional()
+  publicId?: string;
+
+  @IsOptional()
+  socialId?: string;
+
+  @IsOptional()
+  provider?: string;
+
+  @IsOptional()
+  isVerified?: boolean;
+}
