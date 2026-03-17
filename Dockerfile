@@ -1,7 +1,7 @@
 FROM node:22-alpine                                                                                                                                                                                                                          
 
 # Create app directory                                                                                                                                                                                                                       
-WORKDIR /eng-center                                                                                                                                                                                                                          
+WORKDIR /booking-api                                                                                                                                                                                                                      
 
 # A wildcard is used to ensure both package.json and package-lock.json are copied                                                                                                                                                            
 COPY package*.json ./                                                                                                                                                                                                                        
