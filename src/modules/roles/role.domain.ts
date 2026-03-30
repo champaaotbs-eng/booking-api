@@ -1,4 +1,5 @@
 import { Allow } from 'class-validator';
+import { ADMIN_TYPE } from 'utils/constants';
 
 export class Role {
     @Allow()
@@ -6,6 +7,8 @@ export class Role {
 
     @Allow()
     roleName?: string;
+
+    type?: ADMIN_TYPE;
 
     isActive: boolean;
 

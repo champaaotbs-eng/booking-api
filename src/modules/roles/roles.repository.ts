@@ -66,9 +66,10 @@ export class RolesRepository {
 
     async create(data: CreateRoleDto): Promise<Role> {
         const roleEntity = this.repo.create({
-            roleName: data.name,
+            roleName: data.roleName,
             description: data.description,
             isActive: data.isActive ?? true,
+            type: data.type,
             permissions: data.permissions?.map(p => ({
                 module: p.module,
                 read: p.read,
@@ -98,7 +99,7 @@ export class RolesRepository {
 
         const updatedEntity = await this.repo.save({
             ...entity,
-            roleName: payload.name ?? entity.roleName,
+            roleName: payload.roleName ?? entity.roleName,
             description: payload.description ?? entity.description,
             isActive: payload.isActive ?? entity.isActive,
             permissions: payload.permissions ? payload.permissions.map(p => ({

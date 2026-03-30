@@ -6,3 +6,8 @@ export enum Actions {
     Update = 'update',
     Delete = 'delete'
 }
+
+export enum ADMIN_TYPE {
+    SYSTEM_ADMIN = 'system_admin',
+    COMPANY_ADMIN = 'company_admin',
+}

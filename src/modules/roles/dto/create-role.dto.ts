@@ -1,11 +1,12 @@
 import { I18nTranslations } from "@/generated/i18n.generated";
 import { IsNotEmpty, IsString, IsOptional, IsBoolean, IsArray, ValidateNested } from "class-validator";
 import { i18nValidationMessage } from "nestjs-i18n";
+import { ADMIN_TYPE } from "utils/constants";
 
 export class CreateRoleDto {
     @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
     @IsString()
-    name: string;
+    roleName: string;
 
     @IsOptional()
     @IsString()
@@ -14,6 +15,10 @@ export class CreateRoleDto {
     @IsOptional()
     @IsBoolean()
     isActive?: boolean;
+
+    @IsNotEmpty()
+    @IsString()
+    type: ADMIN_TYPE;
 
     @IsOptional()
     @IsArray()

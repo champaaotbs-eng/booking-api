@@ -1,7 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, ILike, Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
 import { AdminEntity } from './entities/admin.entity';
 import { AdminMapper } from './admin.mapper';
 import { Admin } from './admin.domain';
@@ -30,6 +29,7 @@ export class AdminsRepository {
         const where: FindOptionsWhere<AdminEntity> = {};
         if (filterOptions?.username) where.username = ILike(`%${filterOptions.username}%`);
         if (filterOptions?.fullName) where.fullName = ILike(`%${filterOptions.fullName}%`);
+        if (filterOptions?.isActive !== undefined) where.isActive = filterOptions.isActive;
 
         const [entities, total] = await this.repo.findAndCount({
             skip: (paginationOptions.page - 1) * paginationOptions.limit,
@@ -62,9 +62,7 @@ export class AdminsRepository {
         const existing = await this.repo.findOne({ where: { username: dto.username } });
         if (existing) throw new ConflictException(`Username "${dto.username}" is already taken`);
 
-        const hashed = await bcrypt.hash(dto.password, 10);
-        const entity = this.repo.create({ ...dto, password: hashed });
-        const saved = await this.repo.save(entity);
+        const saved = await this.repo.save(this.repo.create(dto));
         return AdminMapper.toDomain(saved);
     }
 
@@ -74,8 +72,7 @@ export class AdminsRepository {
     }
 
     async changePassword(id: string, dto: ChangeAdminPasswordDto): Promise<void> {
-        const hashed = await bcrypt.hash(dto.newPassword, 10);
-        await this.repo.update(id, { password: hashed });
+        await this.repo.update(id, { password: dto.newPassword });
     }
 
     async remove(id: string): Promise<void> {

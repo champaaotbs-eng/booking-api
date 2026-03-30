@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { RoleEntity } from 'modules/roles/entities/role.entity';
+import { ADMIN_TYPE } from 'utils/constants';
 
 @Entity('admins')
 export class AdminEntity {
@@ -25,6 +26,9 @@ export class AdminEntity {
 
     @Column({ name: 'password' })
     password: string;
+
+    @Column({ name: 'type', nullable: true, enum: ADMIN_TYPE })
+    type?: ADMIN_TYPE;
 
     @ManyToOne(() => RoleEntity, { eager: true })
     role: RoleEntity;

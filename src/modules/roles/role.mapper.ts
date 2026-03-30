@@ -7,6 +7,7 @@ export class RoleMapper {
         domainEntity.roleId = raw.roleId;
         domainEntity.roleName = raw.roleName;
         domainEntity.isActive = raw.isActive;
+        domainEntity.type = raw.type;
         domainEntity.description = raw.description;
         domainEntity.permissions = raw.permissions;
         return domainEntity;

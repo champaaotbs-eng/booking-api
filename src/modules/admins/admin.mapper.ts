@@ -8,6 +8,7 @@ export class AdminMapper {
         domainEntity.username = raw.username;
         domainEntity.fullName = raw.fullName;
         domainEntity.role = raw.role
+        domainEntity.type = raw.type;
         domainEntity.permissions = raw.role.permissions;
         domainEntity.avatarUrl = raw.avatarUrl;
         domainEntity.publicId = raw.publicId;

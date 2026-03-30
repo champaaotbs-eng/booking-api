@@ -3,6 +3,7 @@ import { Admin } from '../admin.domain';
 export class FilterAdminDto {
     username?: string;
     fullName?: string;
+    isActive?: boolean;
 }
 
 export class SortAdminDto {

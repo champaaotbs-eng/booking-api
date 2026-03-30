@@ -6,6 +6,7 @@ export class Admin {
     @Allow() username: string;
     @Allow() fullName: string;
     @Allow() role: Role;
+    @Allow() type?: string;
     @Allow() permissions?: Partial<Role>['permissions'];
     @Allow() avatarUrl?: string;
     @Allow() publicId?: string;
