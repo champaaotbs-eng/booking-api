@@ -4,7 +4,7 @@ import { BusCompanyEntity } from './entities/bus-company.entity';
 export class BusCompanyMapper {
     static toDomain(raw: BusCompanyEntity): BusCompany {
         const domain = new BusCompany();
-        domain.id = raw.id;
+        domain.busCompanyId = raw.busCompanyId;
         domain.name = raw.name;
         domain.email = raw.email;
         domain.address = raw.address;

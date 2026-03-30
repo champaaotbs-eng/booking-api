@@ -1,4 +1,3 @@
-import { RoleEnum } from "../roles/roles.enum";
 import { UserEntity } from "./entities/user.entity";
 import { User } from "./user.domain";
 
@@ -18,14 +17,6 @@ export class UserMapper {
         domainEntity.createdAt = raw.createdAt;
         domainEntity.updatedAt = raw.updatedAt;
         domainEntity.deletedAt = raw.deletedAt;
-        domainEntity.role = {
-            id: raw.role.id,
-            name: RoleEnum[raw.role.id],
-            isActive: raw.role.isActive,
-            description: raw.role.description,
-            isStaff: raw.role.isStaff,
-            isSystem: raw.role.isSystem
-        }
 
         return domainEntity
     }

@@ -14,7 +14,7 @@ export class BusEntity {
     id: string;
 
     @ManyToOne(() => BusCompanyEntity, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'companyId' })
+    @JoinColumn({ name: 'busCompanyId' })
     company: BusCompanyEntity;
 
     @Column()

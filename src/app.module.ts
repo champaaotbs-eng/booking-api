@@ -31,7 +31,6 @@ import mailerConfig from 'config/configs/mailer.config';
 import otpConfig from 'config/configs/otp.config';
 import { CacheModule } from '@nestjs/cache-manager';
 import { CacheConfigService } from 'cache/cache-config.service';
-import { RolesGuard } from 'modules/roles/roles.guard';
 import { DataSource } from 'typeorm';
 import { UsersModule } from 'modules/users/users.module';
 import { ProvincesModule } from 'modules/provinces/provinces.module';
@@ -128,10 +127,6 @@ import { AdminsModule } from './modules/admins/admins.module';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: RolesGuard,
     },
     {
       provide: APP_INTERCEPTOR,

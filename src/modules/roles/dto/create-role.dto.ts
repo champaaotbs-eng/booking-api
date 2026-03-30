@@ -1,5 +1,5 @@
 import { I18nTranslations } from "@/generated/i18n.generated";
-import { IsNotEmpty, IsString, IsOptional, IsBoolean } from "class-validator";
+import { IsNotEmpty, IsString, IsOptional, IsBoolean, IsArray, ValidateNested } from "class-validator";
 import { i18nValidationMessage } from "nestjs-i18n";
 
 export class CreateRoleDto {
@@ -13,13 +13,15 @@ export class CreateRoleDto {
 
     @IsOptional()
     @IsBoolean()
-    isActive: boolean;
+    isActive?: boolean;
 
     @IsOptional()
-    @IsBoolean()
-    isStaff: boolean;
-
-    @IsOptional()
-    @IsBoolean()
-    isSystem: boolean;
+    @IsArray()
+    @ValidateNested({ each: true })
+    permissions?: {
+        module: string;
+        read: boolean;
+        write: boolean;
+    }[]
 }
+

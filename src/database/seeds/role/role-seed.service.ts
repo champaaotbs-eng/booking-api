@@ -1,78 +1,38 @@
-import { RoleEntity } from '@/modules/roles/entities/role.entity';
-import { RoleEnum } from '@/modules/roles/roles.enum';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ADMIN_MODULE_PERMISSION_SEEDS } from './admin-modules.data';
+import { RoleEntity } from 'modules/roles/entities/role.entity';
 
 @Injectable()
 export class RoleSeedService {
     constructor(
         @InjectRepository(RoleEntity)
-        private repository: Repository<RoleEntity>,
+        private roleRepository: Repository<RoleEntity>,
     ) { }
 
     async run() {
-        const countAdmin = await this.repository.count({
-            where: {
-                id: RoleEnum.admin,
-            },
+
+        // Assign all permissions to Admin role
+        let adminRole = await this.roleRepository.findOne({
+            where: { roleName: 'Admin' },
         });
 
-        if (!countAdmin) {
-            await this.repository.save(
-                this.repository.create({
-                    id: RoleEnum.admin,
-                    name: 'Admin',
-                }),
-                { listeners: false }
-            );
-        }
-
-        const countTeacher = await this.repository.count({
-            where: {
-                id: RoleEnum.teacher,
-            },
-        });
-
-        if (!countTeacher) {
-            await this.repository.save(
-                this.repository.create({
-                    id: RoleEnum.teacher,
-                    name: 'Teacher',
-                }),
-                { listeners: false }
-            );
-        }
-        const countParent = await this.repository.count({
-            where: {
-                id: RoleEnum.parent,
-            },
-        });
-
-        if (!countParent) {
-            await this.repository.save(
-                this.repository.create({
-                    id: RoleEnum.parent,
-                    name: 'Parent',
-                }),
-                { listeners: false }
-            );
-        }
-
-        const countStudent = await this.repository.count({
-            where: {
-                id: RoleEnum.student,
-            },
-        });
-
-        if (!countStudent) {
-            await this.repository.save(
-                this.repository.create({
-                    id: RoleEnum.student,
-                    name: 'Student',
-                }),
-                { listeners: false }
-            );
+        if (!adminRole) {
+            const newAdminRole = this.roleRepository.create({
+                roleName: 'Admin',
+                isActive: true,
+                description: 'Administrator role with full permissions',
+                permissions: ADMIN_MODULE_PERMISSION_SEEDS.map(p => ({
+                    module: p.module,
+                    read: true,
+                    write: true,
+                })),
+            });
+            adminRole = await this.roleRepository.save(newAdminRole);
+            console.log('Admin role created');
         }
     }
 }
+
+

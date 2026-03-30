@@ -11,11 +11,13 @@ import { MailModule } from 'modules/mail/mail.module';
 import { OtpModule } from 'modules/otp/otp.module';
 import { AdminsModule } from 'modules/admins/admins.module';
 import { AdminStrategy } from './strategy/admin.strategy';
+import { RolesModule } from 'modules/roles/roles.module';
 
 @Module({
   imports: [
     UsersModule,
     AdminsModule,
+    RolesModule,
     PassportModule,
     JwtModule.register({}),
     MailModule,

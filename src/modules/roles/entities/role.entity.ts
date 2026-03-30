@@ -1,31 +1,29 @@
-import { PermissionEntity } from '@/modules/permissions/entities/permission.entity';
-import { Column, Entity, ManyToMany, JoinTable, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
-@Entity('role')
+@Entity('roles')
 export class RoleEntity {
-    @PrimaryGeneratedColumn()
-    id: number;
+    @PrimaryGeneratedColumn('uuid', { name: 'role_id' })
+    roleId: string;
 
     @Column()
-    name?: string;
+    roleName: string;
 
     @Column({ default: true })
-    isActive: boolean
+    isActive: boolean;
 
-    @Column({ default: false })
-    isStaff?: boolean
+    @Column({ type: 'jsonb' })
+    permissions: {
+        module: string;
+        read: boolean;
+        write: boolean;
+    }[];
 
-    @Column({ default: false })
-    isSystem?: boolean
-
-    @Column({ default: 'test' })
+    @Column({ nullable: true })
     description: string;
 
-    @ManyToMany(() => PermissionEntity, (permission) => permission.roles, { cascade: false })
-    @JoinTable({
-        name: 'role_permission',
-        joinColumn: { name: 'roleId', referencedColumnName: 'id' },
-        inverseJoinColumn: { name: 'permissionId', referencedColumnName: 'id' }
-    })
-    permissions?: PermissionEntity[];
+    @CreateDateColumn()
+    createdAt: Date;
+
+    @UpdateDateColumn()
+    updatedAt: Date;
 }

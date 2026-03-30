@@ -37,7 +37,7 @@ export class TripEntity {
     @Column({ nullable: true })
     busVersionId?: string;
 
-    @ManyToOne(() => BusCompanyEntity, { onDelete: 'RESTRICT' })
+    @ManyToOne(() => BusCompanyEntity)
     @JoinColumn({ name: 'busCompanyId' })
     busCompany: BusCompanyEntity;
 

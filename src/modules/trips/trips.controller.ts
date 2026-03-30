@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { TripsService } from './trips.service';
-import { Auth, Public } from '@/decorator/customize.decorator';
+import { Public } from '@/decorator/customize.decorator';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterTripDto, SortTripDto } from './dto/query-trip.dto';
 import { CreateTripDto, UpdateTripDto } from './dto/trip.dto';
@@ -28,19 +28,16 @@ export class TripsController {
     }
 
     @Post()
-    @Auth()
     create(@Body() dto: CreateTripDto) {
         return this.tripsService.create(dto);
     }
 
     @Patch(':id')
-    @Auth()
     update(@Param('id') id: string, @Body() dto: UpdateTripDto) {
         return this.tripsService.update(id, dto);
     }
 
     @Delete(':id')
-    @Auth()
     remove(@Param('id') id: string) {
         return this.tripsService.remove(id);
     }

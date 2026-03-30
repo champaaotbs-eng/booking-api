@@ -11,7 +11,6 @@ import {
   Matches,
 } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
-import { RoleDto } from '@/modules/roles/dto/role.dto';
 import { Role } from '@/modules/roles/role.domain';
 
 export class CreateUserDto {

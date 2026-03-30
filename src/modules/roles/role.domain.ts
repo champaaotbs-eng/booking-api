@@ -1,20 +1,19 @@
 import { Allow } from 'class-validator';
-import { Permission } from 'modules/permissions/permission.domain';
 
 export class Role {
     @Allow()
-    id: number;
+    roleId: string;
 
     @Allow()
-    name?: string;
+    roleName?: string;
 
     isActive: boolean;
 
-    isStaff: boolean;
-
-    isSystem: boolean;
-
     description: string;
 
-    permissions?: Partial<Permission>[]
+    permissions?: {
+        module: string;
+        read: boolean;
+        write: boolean;
+    }[]
 }

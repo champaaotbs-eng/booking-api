@@ -60,7 +60,7 @@ export class BusCompaniesRepository {
     }
 
     async findById(id: string): Promise<NullableType<BusCompany>> {
-        const entity = await this.repo.findOne({ where: { id } });
+        const entity = await this.repo.findOne({ where: { busCompanyId: id } });
         return entity ? BusCompanyMapper.toDomain(entity) : null;
     }
 

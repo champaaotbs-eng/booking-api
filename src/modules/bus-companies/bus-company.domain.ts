@@ -2,7 +2,7 @@ import { Allow } from 'class-validator';
 import { BusCompanyStatus } from './entities/bus-company.entity';
 
 export class BusCompany {
-    @Allow() id: string;
+    @Allow() busCompanyId: string;
     @Allow() name: string;
     @Allow() email?: string;
     @Allow() address?: string;

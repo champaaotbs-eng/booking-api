@@ -15,7 +15,7 @@ export class FilesService implements OnModuleInit {
     })
   }
 
-  async uploadFile(file: Express.Multer.File, path: string = '') {
+  async uploadFile(file: Express.Multer.File, path: string = 'booking-ticket') {
     try {
       // Upload the image
       const uploadResult = await new Promise((resolve, reject) => {
@@ -32,7 +32,7 @@ export class FilesService implements OnModuleInit {
       });
       return {
         url: uploadResult['secure_url'],
-        public_id: uploadResult['public_id']
+        publicId: uploadResult['public_id']
       };
     } catch (error) {
       console.error(error);

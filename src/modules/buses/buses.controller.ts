@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { BusesService } from './buses.service';
-import { Auth, Public } from '@/decorator/customize.decorator';
+import { Public } from '@/decorator/customize.decorator';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterBusDto, SortBusDto } from './dto/query-bus.dto';
 import { CreateBusDto, CreateBusVersionDto, UpdateBusDto, UpdateBusVersionDto } from './dto/bus.dto';
@@ -22,19 +22,16 @@ export class BusesController {
     }
 
     @Post()
-    @Auth()
     create(@Body() dto: CreateBusDto) {
         return this.busesService.create(dto);
     }
 
     @Patch(':id')
-    @Auth()
     update(@Param('id') id: string, @Body() dto: UpdateBusDto) {
         return this.busesService.update(id, dto);
     }
 
     @Delete(':id')
-    @Auth()
     remove(@Param('id') id: string) {
         return this.busesService.remove(id);
     }
@@ -46,13 +43,11 @@ export class BusesController {
     }
 
     @Post(':busId/versions')
-    @Auth()
     createVersion(@Param('busId') busId: string, @Body() dto: CreateBusVersionDto) {
         return this.busesService.createVersion(busId, dto);
     }
 
     @Patch(':busId/versions/:versionId')
-    @Auth()
     updateVersion(
         @Param('busId') busId: string,
         @Param('versionId') versionId: string,
@@ -62,7 +57,6 @@ export class BusesController {
     }
 
     @Delete(':busId/versions/:versionId')
-    @Auth()
     removeVersion(
         @Param('busId') busId: string,
         @Param('versionId') versionId: string,

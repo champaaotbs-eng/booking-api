@@ -2,12 +2,10 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource, DataSourceOptions } from 'typeorm';
-import { RoleSeedModule } from './role/role-seed.module';
 import { AdminUserSeedModule } from './admin/admin-user-seed.module';
 import databaseConfig from '@/config/configs/database.config';
 import appConfig from '@/config/configs/app.config';
 import { TypeOrmConfigService } from '../typeorm-config.service';
-import { PermissionSeedModule } from './permission/permission-seed.module';
 import { PaymentsModule } from 'modules/payments/payments.module';
 import { UsersModule } from 'modules/users/users.module';
 import jwtConfig from 'config/configs/jwt.config';
@@ -24,8 +22,7 @@ import { ClsModule } from 'nestjs-cls';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HttpModule } from '@nestjs/axios';
 import { FilesModule } from 'modules/files/files.module';
-import { PermissionsModule } from 'modules/permissions/permissions.module';
-import { RolesModule } from 'modules/roles/roles.module';
+import { RoleSeedModule } from './role/role-seed.module';
 
 @Module({
     imports: [
@@ -83,6 +80,7 @@ import { RolesModule } from 'modules/roles/roles.module';
         }),
         PaymentsModule,
         FilesModule,
+        RoleSeedModule,
     ],
 })
 export class SeedModule { }

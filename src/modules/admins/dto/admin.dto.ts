@@ -3,7 +3,6 @@ import {
     IsOptional,
     IsString,
     IsUUID,
-    Matches,
     MinLength,
 } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
@@ -23,6 +22,9 @@ export class CreateAdminDto {
     @IsString()
     @MinLength(6)
     password: string;
+
+    @IsNotEmpty()
+    isActive: boolean;
 
     @IsOptional()
     @IsUUID()

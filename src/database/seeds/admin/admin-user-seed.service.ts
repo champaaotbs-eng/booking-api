@@ -1,9 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { UserEntity } from '@/modules/users/entities/user.entity';
 import { RoleEntity } from '@/modules/roles/entities/role.entity';
-import { RoleEnum } from '@/modules/roles/roles.enum';
 import { AdminEntity } from 'modules/admins/entities/admin.entity';
 
 @Injectable()
@@ -23,11 +21,15 @@ export class AdminUserSeedService {
 
         if (!existingAdmin) {
 
+            const adminRole = await this.roleRepository.findOne({
+                where: { roleName: 'Admin' },
+            });
+
             const admin = this.adminRepository.create({
                 fullName: 'System Administrator',
                 username: 'admin',
                 password: 'password123',
-                roleId: '1'
+                role: adminRole,
             });
 
             await this.adminRepository.save(admin);

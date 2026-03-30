@@ -1,10 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { RolesRepository } from './roles.repository';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterRoleDto, SortRoleDto } from './dto/query-role.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
-import { RoleEnum } from './roles.enum';
 
 @Injectable()
 export class RolesService {
@@ -26,7 +25,7 @@ export class RolesService {
         return this.rolesRepository.create(createRoleDto);
     }
 
-    async findOne(id: number) {
+    async findOne(id: string) {
         const role = await this.rolesRepository.findById(id);
         if (!role) {
             throw new NotFoundException('Role not found');
@@ -34,14 +33,11 @@ export class RolesService {
         return role;
     }
 
-    async update(id: number, updateRoleDto: UpdateRoleDto) {
+    async update(id: string, updateRoleDto: UpdateRoleDto) {
         return this.rolesRepository.update(id, updateRoleDto);
     }
 
-    async remove(id: number) {
-        if (Object.values(RoleEnum).includes(id)) {
-            throw new BadRequestException('Cannot delete system role');
-        }
+    async remove(id: string) {
         await this.rolesRepository.remove(id);
         return { message: 'Role deleted successfully' };
     }

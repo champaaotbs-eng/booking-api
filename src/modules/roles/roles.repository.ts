@@ -1,28 +1,25 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, ILike, Repository, In } from 'typeorm';
 import { RoleEntity } from './entities/role.entity';
-import { PermissionEntity } from '@/modules/permissions/entities/permission.entity';
 import { RoleMapper } from './role.mapper';
 import { Role } from './role.domain';
 import { FilterRoleDto, SortRoleDto } from './dto/query-role.dto';
 import { IPaginationOptions } from '@/utils/types/pagination-options';
 import { PaginationResponseDto } from '@/utils/types/pagination-response.dto';
-import { AssignPermissionsDto } from './dto/assign-permissions.dto';
-import { RemovePermissionsDto } from './dto/remove-permissions.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
-import { NullableType } from '@/utils/types/nullable.type';
-import { PermissionCacheService } from './permission-cache.service';
+import { NullableType } from '@/utils/types/nullable.type'
+import { DataSource } from 'typeorm';
+import { AdminEntity } from 'modules/admins/entities/admin.entity';
+import { UserEntity } from 'modules/users/entities/user.entity';
 
 @Injectable()
 export class RolesRepository {
     constructor(
         @InjectRepository(RoleEntity)
         private readonly repo: Repository<RoleEntity>,
-        @InjectRepository(PermissionEntity)
-        private readonly permRepo: Repository<PermissionEntity>,
-        private readonly permissionCacheService: PermissionCacheService,
+        private readonly dataSource: DataSource,
     ) { }
 
     async findManyWithPagination({
@@ -37,15 +34,9 @@ export class RolesRepository {
         const where: FindOptionsWhere<RoleEntity> = {};
 
         if (filterOptions?.name) {
-            where.name = ILike(`%${filterOptions.name}%`);
+            where.roleName = ILike(`%${filterOptions.name}%`);
         }
-        if (filterOptions?.isStaff) {
-            where.isStaff = filterOptions.isStaff;
-        }
-        if (filterOptions?.isSystem) {
-            where.isSystem = filterOptions.isSystem;
-        }
-        if (filterOptions?.isActive) {
+        if (filterOptions?.isActive !== undefined) {
             where.isActive = filterOptions.isActive;
         }
 
@@ -53,11 +44,10 @@ export class RolesRepository {
             skip: (paginationOptions.page - 1) * paginationOptions.limit,
             take: paginationOptions.limit,
             where,
-            relations: ['permissions'],
-            order: sortOptions?.reduce(
-                (acc, s) => ({ ...acc, [s.orderBy]: s.order }),
-                {},
-            ),
+            order: sortOptions?.reduce((acc, s) => {
+                const orderBy = s.orderBy === 'roleName' ? 'roleName' : s.orderBy;
+                return { ...acc, [orderBy]: s.order };
+            }, {}),
         });
 
         const totalItems = total;
@@ -75,77 +65,72 @@ export class RolesRepository {
     }
 
     async create(data: CreateRoleDto): Promise<Role> {
-        const persistenceModel = this.repo.create(data);
-        const newEntity = await this.repo.save(persistenceModel);
+        const roleEntity = this.repo.create({
+            roleName: data.name,
+            description: data.description,
+            isActive: data.isActive ?? true,
+            permissions: data.permissions?.map(p => ({
+                module: p.module,
+                read: p.read,
+                write: p.write,
+            })) || [],
+        });
+        const newEntity = await this.repo.save(roleEntity);
         return RoleMapper.toDomain(newEntity);
     }
 
-    async findById(id: Role['id']): Promise<NullableType<Role>> {
+    async findById(id: Role['roleId']): Promise<NullableType<Role>> {
         const entity = await this.repo.findOne({
-            where: { id },
-            relations: ['permissions'],
+            where: { roleId: id },
         });
 
         return entity ? RoleMapper.toDomain(entity) : null;
     }
 
-    async update(id: Role['id'], payload: UpdateRoleDto): Promise<Role> {
+    async update(id: Role['roleId'], payload: UpdateRoleDto): Promise<Role> {
         const entity = await this.repo.findOne({
-            where: { id },
-            relations: ['permissions'],
+            where: { roleId: id },
         });
 
         if (!entity) {
             throw new NotFoundException('Role not found');
         }
 
-        // Update basic role properties
-        const updatedEntity = await this.repo.save(
-            this.repo.create({
-                ...entity,
-                name: payload.name !== undefined ? payload.name : entity.name,
-                description: payload.description !== undefined ? payload.description : entity.description,
-                isActive: payload.isActive !== undefined ? payload.isActive : entity.isActive,
-                isStaff: payload.isStaff !== undefined ? payload.isStaff : entity.isStaff,
-                isSystem: payload.isSystem !== undefined ? payload.isSystem : entity.isSystem,
-            }),
-        );
-
-        // Update permissions if provided
-        if (payload.permissionIds.length > 0) {
-            const permissions = await this.permRepo.find({
-                where: { id: In(payload.permissionIds) }
-            });
-
-            // Replace all permissions with new ones
-            updatedEntity.permissions = permissions;
-            await this.repo.save(updatedEntity);
-        }
-
-        // Invalidate cache for this role
-        await this.permissionCacheService.invalidateRole(id);
-
-        // Return updated entity with permissions
-        const finalEntity = await this.repo.findOne({
-            where: { id },
-            relations: ['permissions'],
+        const updatedEntity = await this.repo.save({
+            ...entity,
+            roleName: payload.name ?? entity.roleName,
+            description: payload.description ?? entity.description,
+            isActive: payload.isActive ?? entity.isActive,
+            permissions: payload.permissions ? payload.permissions.map(p => ({
+                module: p.module,
+                read: p.read,
+                write: p.write,
+            })) : entity.permissions,
         });
-
-        return RoleMapper.toDomain(finalEntity);
+        return RoleMapper.toDomain(updatedEntity);
     }
 
-    async remove(id: Role['id']): Promise<void> {
+    async remove(id: Role['roleId']): Promise<void> {
         const entity = await this.repo.findOne({
-            where: { id },
+            where: { roleId: id },
         });
 
         if (!entity) {
             throw new NotFoundException('Role not found');
         }
 
-        // Invalidate cache for this role
-        await this.permissionCacheService.invalidateRole(id);
+        const adminCount = await this.dataSource.getRepository(AdminEntity).count({
+            where: {
+                role: {
+                    roleId: id,
+                },
+            },
+            relations: ['role'],
+        });
+        if (adminCount > 0) {
+            throw new BadRequestException('Role is assigned to users');
+        }
 
-        await this.repo.delete(id);
+        await this.repo.delete({ roleId: id });
     }
 }

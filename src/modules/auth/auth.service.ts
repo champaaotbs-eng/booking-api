@@ -13,6 +13,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { OtpService } from 'modules/otp/otp.service';
 import { AdminsService } from 'modules/admins/admins.service';
 import { Admin } from 'modules/admins/admin.domain';
+import { RolesService } from 'modules/roles/roles.service';
 
 @Injectable()
 export class AuthService {
@@ -23,7 +24,7 @@ export class AuthService {
     private i18nService: I18nService<I18nTranslations>,
     private configService: ConfigService<AllConfigType>,
     private mailService: MailService,
-    private otpService: OtpService
+    private otpService: OtpService,
   ) { }
 
   async validateUser(email: string, pass: string): Promise<any> {
@@ -41,13 +42,13 @@ export class AuthService {
   }
 
   async adminLogin(admin: Admin, response: Response) {
+
     const payload = {
       sub: 'admin-token',
       iss: 'server',
       adminId: admin.adminId,
       username: admin.username,
       fullName: admin.fullName,
-      roleId: admin.roleId,
     };
 
 
@@ -66,7 +67,7 @@ export class AuthService {
         adminId: admin.adminId,
         username: admin.username,
         fullName: admin.fullName,
-        roleId: admin.roleId,
+        permissions: admin.permissions
       },
     };
   }
@@ -76,7 +77,9 @@ export class AuthService {
     const payload = {
       sub: 'token login',
       iss: 'server',
-      userId, fullName, email, role
+      userId,
+      fullName,
+      email,
     }
 
     const refreshToken = this.createRefreshToken(payload)
@@ -93,7 +96,11 @@ export class AuthService {
         expiresIn: this.configService.get('jwt.jwt_access_expiration_minutes', { infer: true })
       }),
       user: {
-        userId, fullName, email, role, address, phone
+        userId,
+        fullName,
+        email,
+        address,
+        phone,
       }
     }
   }
@@ -112,32 +119,83 @@ export class AuthService {
         secret: this.configService.get('jwt.jwt_refresh_secret', { infer: true })
       })
 
-      const user = await this.usersService.findUserByToken(payload.role, refreshToken)
+      // Handle Admin Token
+      if (payload.adminId) {
+        const admin = await this.adminsService.findOne(payload.adminId)
 
-      if (user) {
-        const { userId, fullName, email, role, address, phone } = user
-        const payload = {
-          sub: 'token login',
-          iss: 'server',
-          userId, fullName, email, role,
+        if (!admin) {
+          throw new NotFoundException(this.i18nService.t('common.NOT_FOUND', {
+            args: { entity: "admin" }
+          }))
         }
 
-        //save refresh token database
-        const refresh_token = this.createRefreshToken(payload)
-        this.usersService.updateUserToken(user, refresh_token)
+        const newPayload = {
+          sub: 'admin-token',
+          iss: 'server',
+          adminId: admin.adminId,
+          username: admin.username,
+          fullName: admin.fullName,
+        }
+
+        const refresh_token = this.createRefreshToken(newPayload)
+        response.clearCookie('refreshToken')
+        response.cookie('refreshToken', refresh_token, {
+          httpOnly: false,
+          maxAge: 2592000 * 1000
+        })
+
+        return {
+          accessToken: this.jwtService.sign(newPayload, {
+            secret: this.configService.get('jwt.jwt_access_secret', { infer: true }),
+            expiresIn: this.configService.get('jwt.jwt_access_expiration_minutes', { infer: true })
+          }),
+          admin: {
+            adminId: admin.adminId,
+            username: admin.username,
+            fullName: admin.fullName,
+            permissions: admin.permissions
+          },
+        }
+      }
+
+      // Handle User Token
+      if (payload.userId) {
+        const user = await this.usersService.findUserByToken(payload.role, refreshToken)
+
+        if (!user) {
+          throw new NotFoundException(this.i18nService.t('common.NOT_FOUND', {
+            args: { entity: "user" }
+          }))
+        }
+
+        const { userId, fullName, email, address, phone } = user
+        const newPayload = {
+          sub: 'token login',
+          iss: 'server',
+          userId,
+          fullName,
+          email,
+        }
+
+        const refresh_token = this.createRefreshToken(newPayload)
+        await this.usersService.updateUserToken(user, refresh_token)
         response.clearCookie('refreshToken')
         response.cookie('refreshToken', refresh_token, {
           httpOnly: true,
           maxAge: 2592000 * 1000
-        });
+        })
 
         return {
-          accessToken: this.jwtService.sign(payload, {
+          accessToken: this.jwtService.sign(newPayload, {
             secret: this.configService.get('jwt.jwt_access_secret', { infer: true }),
             expiresIn: this.configService.get('jwt.jwt_access_expiration_minutes', { infer: true })
           }),
           user: {
-            userId, fullName, email, role, address, phone
+            userId,
+            fullName,
+            email,
+            address,
+            phone,
           }
         }
       } else {

@@ -43,14 +43,14 @@ export class BusCompaniesService {
 
         if (dto.name && dto.name !== current.name) {
             const existedByName = await this.busCompaniesRepository.findByName(dto.name);
-            if (existedByName && existedByName.id !== id) {
+            if (existedByName && existedByName.busCompanyId !== id) {
                 throw new ConflictException('Bus company name already exists');
             }
         }
 
         if (dto.email && dto.email !== current.email) {
             const existedByEmail = await this.busCompaniesRepository.findByEmail(dto.email);
-            if (existedByEmail && existedByEmail.id !== id) {
+            if (existedByEmail && existedByEmail.busCompanyId !== id) {
                 throw new ConflictException('Bus company email already exists');
             }
         }

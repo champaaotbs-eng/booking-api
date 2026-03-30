@@ -4,6 +4,7 @@ import { QueryDto } from '@/utils/types/query.dto';
 import { FilterAdminDto, SortAdminDto } from './dto/query-admin.dto';
 import { ChangeAdminPasswordDto, CreateAdminDto, UpdateAdminDto } from './dto/admin.dto';
 import * as bcrypt from 'bcrypt';
+import { AdminMapper } from './admin.mapper';
 
 @Injectable()
 export class AdminsService {
@@ -45,7 +46,7 @@ export class AdminsService {
     async findAdminByUsername(username: string) {
         const admin = await this.adminsRepository.findByUsername(username);
         if (!admin) throw new NotFoundException('Admin not found');
-        return admin;
+        return { ...AdminMapper.toDomain(admin), password: admin.password };
     }
 
 

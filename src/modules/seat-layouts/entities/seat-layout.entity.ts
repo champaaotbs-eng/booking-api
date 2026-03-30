@@ -7,7 +7,7 @@ export class SeatLayoutEntity {
     id: string;
 
     @ManyToOne(() => BusCompanyEntity, { nullable: true, onDelete: 'SET NULL' })
-    @JoinColumn({ name: 'companyId' })
+    @JoinColumn({ name: 'busCompanyId' })
     company?: BusCompanyEntity;
 
     @Column({ nullable: true })

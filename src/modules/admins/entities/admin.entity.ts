@@ -5,10 +5,12 @@ import {
     CreateDateColumn,
     DeleteDateColumn,
     Entity,
+    ManyToOne,
     PrimaryGeneratedColumn,
     UpdateDateColumn,
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { RoleEntity } from 'modules/roles/entities/role.entity';
 
 @Entity('admins')
 export class AdminEntity {
@@ -24,8 +26,8 @@ export class AdminEntity {
     @Column({ name: 'password' })
     password: string;
 
-    @Column({ name: 'role_id' })
-    roleId: string;
+    @ManyToOne(() => RoleEntity, { eager: true })
+    role: RoleEntity;
 
     @Column({ name: 'avatar_url', nullable: true })
     avatarUrl?: string;

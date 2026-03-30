@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ProvincesService } from './provinces.service';
-import { Auth, Public } from '@/decorator/customize.decorator';
+import { Public } from '@/decorator/customize.decorator';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterProvinceDto, FilterWardDto, SortProvinceDto, SortWardDto } from './dto/query-province.dto';
 import { CreateProvinceDto, CreateWardDto, UpdateProvinceDto, UpdateWardDto } from './dto/create-province.dto';
@@ -22,19 +22,16 @@ export class ProvincesController {
     }
 
     @Post()
-    @Auth()
     create(@Body() dto: CreateProvinceDto) {
         return this.provincesService.createProvince(dto);
     }
 
     @Patch(':id')
-    @Auth()
     update(@Param('id') id: string, @Body() dto: UpdateProvinceDto) {
         return this.provincesService.updateProvince(id, dto);
     }
 
     @Delete(':id')
-    @Auth()
     remove(@Param('id') id: string) {
         return this.provincesService.removeProvince(id);
     }
@@ -67,19 +64,16 @@ export class WardsController {
     }
 
     @Post()
-    @Auth()
     create(@Body() dto: CreateWardDto) {
         return this.provincesService.createWard(dto);
     }
 
     @Patch(':id')
-    @Auth()
     update(@Param('id') id: string, @Body() dto: UpdateWardDto) {
         return this.provincesService.updateWard(id, dto);
     }
 
     @Delete(':id')
-    @Auth()
     remove(@Param('id') id: string) {
         return this.provincesService.removeWard(id);
     }

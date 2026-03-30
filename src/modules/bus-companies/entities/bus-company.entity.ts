@@ -8,8 +8,8 @@ export enum BusCompanyStatus {
 
 @Entity('bus_companies')
 export class BusCompanyEntity {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+    @PrimaryGeneratedColumn('uuid', { name: 'bus_company_id' })
+    busCompanyId: string;
 
     @Column({ length: 200 })
     name: string;
@@ -23,18 +23,18 @@ export class BusCompanyEntity {
     @Column({ nullable: true })
     phone?: string;
 
-    @Column({ type: 'float', default: 0 })
+    @Column({ type: 'float', default: 0, name: 'service_fee' })
     serviceFee: number;
 
-    @Column({ nullable: true })
+    @Column({ nullable: true, name: 'logo_url' })
     logoUrl?: string;
 
-    @Column({ nullable: true })
+    @Column({ nullable: true, name: 'public_id' })
     publicId?: string;
 
     @Column({ default: BusCompanyStatus.ACTIVE })
     status: BusCompanyStatus;
 
-    @CreateDateColumn({ type: 'timestamptz' })
+    @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
     createdAt: Date;
 }

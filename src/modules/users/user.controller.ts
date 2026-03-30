@@ -34,7 +34,6 @@ export class UsersController {
         });
     }
 
-    @Auth()
     @Patch('avatar')
     uploadAvatar(@Body() uploadavatarDto: UploadAvatarDto, @UserInfo() user: User) {
         return this.usersService.uploadAvatar(uploadavatarDto.imageUrl, uploadavatarDto.publicId, user.userId);

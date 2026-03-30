@@ -30,7 +30,6 @@ export class AdminsRepository {
         const where: FindOptionsWhere<AdminEntity> = {};
         if (filterOptions?.username) where.username = ILike(`%${filterOptions.username}%`);
         if (filterOptions?.fullName) where.fullName = ILike(`%${filterOptions.fullName}%`);
-        if (filterOptions?.roleId) where.roleId = filterOptions.roleId;
 
         const [entities, total] = await this.repo.findAndCount({
             skip: (paginationOptions.page - 1) * paginationOptions.limit,

@@ -1,5 +1,5 @@
 import { Exclude } from "class-transformer";
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, BeforeInsert, BeforeUpdate, ManyToOne } from "typeorm";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, BeforeInsert, BeforeUpdate, ManyToOne, JoinColumn } from "typeorm";
 import * as bcrypt from "bcrypt";
 import { RoleEntity } from "@/modules/roles/entities/role.entity";
 
@@ -29,9 +29,6 @@ export class UserEntity {
 
   @Column({ nullable: true, name: 'public_id' })
   publicId: string;
-
-  @ManyToOne(() => RoleEntity, { eager: true })
-  role: RoleEntity;
 
   @Column({ nullable: true, name: 'refresh_token' })
   refreshToken: string;
