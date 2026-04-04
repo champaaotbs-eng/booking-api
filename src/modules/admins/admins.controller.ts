@@ -22,6 +22,11 @@ export class AdminsController {
         return this.adminsService.findAll(query);
     }
 
+    @Get('company-admins/available')
+    findAvailableCompanyAdmins() {
+        return this.adminsService.findCompanyAdmins();
+    }
+
     @Get(':id')
     findOne(@Param('id') id: string) {
         return this.adminsService.findOne(id);

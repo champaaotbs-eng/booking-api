@@ -3,29 +3,29 @@ import { BusCompanyEntity } from './bus-company.entity';
 import { AdminEntity } from '@/modules/admins/entities/admin.entity';
 
 export enum BusCompanyAdminPosition {
-    OWNER = 'OWNER',
-    STAFF = 'STAFF',
+    OWNER = 'owner',
+    STAFF = 'staff',
 }
 
 @Entity('bus_company_admins')
 export class BusCompanyAdminEntity {
-    @PrimaryColumn()
+    @PrimaryColumn({ name: 'admin_id' })
     adminId: string;
 
-    @PrimaryColumn()
+    @PrimaryColumn({ name: 'company_id' })
     companyId: string;
 
-    @ManyToOne(() => BusCompanyEntity, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'busCompanyId' })
+    @ManyToOne(() => BusCompanyEntity, company => company.companyAdmins, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'company_id', referencedColumnName: 'busCompanyId' })
     company: BusCompanyEntity;
 
     @ManyToOne(() => AdminEntity, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'adminId', referencedColumnName: 'adminId' })
+    @JoinColumn({ name: 'admin_id', referencedColumnName: 'adminId' })
     admin: AdminEntity;
 
     @Column({ type: 'enum', enum: BusCompanyAdminPosition, default: BusCompanyAdminPosition.STAFF })
     position: BusCompanyAdminPosition;
 
-    @CreateDateColumn({ type: 'timestamptz' })
+    @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
     createdAt: Date;
 }

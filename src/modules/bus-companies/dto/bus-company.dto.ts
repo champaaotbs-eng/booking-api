@@ -25,12 +25,23 @@ export class CreateBusCompanyDto {
     @IsOptional()
     @IsNumber()
     serviceFee?: number;
-}
 
-export class UpdateBusCompanyDto extends PartialType(CreateBusCompanyDto) {
+    @IsOptional()
+    logoUrl?: string;
+
+    @IsOptional()
+    publicId?: string;
+
     @IsOptional()
     @IsEnum(BusCompanyStatus)
     status?: BusCompanyStatus;
+
+    @IsOptional()
+    companyAdmins?: AddBusCompanyAdminDto[];
+}
+
+export class UpdateBusCompanyDto extends PartialType(CreateBusCompanyDto) {
+
 }
 
 export class AddBusCompanyAdminDto {

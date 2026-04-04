@@ -7,7 +7,6 @@ export class SeatLayout {
     @Allow() name: string;
     @Allow() rows: number;
     @Allow() columns: number;
-    @Allow() floors: number;
     @Allow() createdAt: Date;
     @Allow() seats?: Seat[];
 }
@@ -20,5 +19,5 @@ export class Seat {
     @Allow() col: number;
     @Allow() floor: number;
     @Allow() seatType: SeatType;
-    @Allow() extraPrice: number;
+    @Allow() price: number;
 }

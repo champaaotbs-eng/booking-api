@@ -3,22 +3,26 @@ import { ProvinceEntity } from './province.entity';
 
 @Entity('wards')
 export class WardEntity {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+    @PrimaryGeneratedColumn('uuid', { name: 'ward_id' })
+    wardId: string;
 
-    @Column({ length: 100 })
+    @Column({ name: 'name', length: 100 })
     name: string;
 
-    @Column({ unique: true, length: 20 })
+    @Column({ name: 'code', unique: true, length: 20 })
     code: string;
 
-    @Column({ nullable: true })
+    @Column({ name: 'division_type', nullable: true })
     divisionType?: string;
 
     @ManyToOne(() => ProvinceEntity, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'provinceId' })
+    @JoinColumn({ name: 'province_id', referencedColumnName: 'provinceId' })
     province: ProvinceEntity;
 
-    @Column()
+    @Column({ name: 'province_id' })
     provinceId: string;
+
+    get id(): string {
+        return this.wardId;
+    }
 }

@@ -1,4 +1,5 @@
 import { Allow } from 'class-validator';
+import { RouteStop } from '@/modules/route-stops/route-stop.domain';
 
 export class Route {
     @Allow() id: string;
@@ -9,4 +10,5 @@ export class Route {
     @Allow() distanceKm?: number;
     @Allow() estimateDurationMins?: number;
     @Allow() createdAt: Date;
+    @Allow() stops?: RouteStop[];
 }

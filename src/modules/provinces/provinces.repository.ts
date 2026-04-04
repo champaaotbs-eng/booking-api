@@ -52,7 +52,7 @@ export class ProvincesRepository {
     }
 
     async findProvinceById(id: string): Promise<NullableType<Province>> {
-        const entity = await this.provinceRepo.findOne({ where: { id } });
+        const entity = await this.provinceRepo.findOne({ where: { provinceId: id } });
         return entity ? ProvinceMapper.toDomain(entity) : null;
     }
 
@@ -63,12 +63,12 @@ export class ProvincesRepository {
     }
 
     async updateProvince(id: string, dto: UpdateProvinceDto): Promise<NullableType<Province>> {
-        await this.provinceRepo.update(id, dto);
+        await this.provinceRepo.update({ provinceId: id }, dto);
         return this.findProvinceById(id);
     }
 
     async removeProvince(id: string): Promise<void> {
-        await this.provinceRepo.delete(id);
+        await this.provinceRepo.delete({ provinceId: id });
     }
 
     async findManyWards({
@@ -103,7 +103,7 @@ export class ProvincesRepository {
     }
 
     async findWardById(id: string): Promise<NullableType<Ward>> {
-        const entity = await this.wardRepo.findOne({ where: { id } });
+        const entity = await this.wardRepo.findOne({ where: { wardId: id } });
         return entity ? WardMapper.toDomain(entity) : null;
     }
 
@@ -114,11 +114,11 @@ export class ProvincesRepository {
     }
 
     async updateWard(id: string, dto: UpdateWardDto): Promise<NullableType<Ward>> {
-        await this.wardRepo.update(id, dto);
+        await this.wardRepo.update({ wardId: id }, dto);
         return this.findWardById(id);
     }
 
     async removeWard(id: string): Promise<void> {
-        await this.wardRepo.delete(id);
+        await this.wardRepo.delete({ wardId: id });
     }
 }

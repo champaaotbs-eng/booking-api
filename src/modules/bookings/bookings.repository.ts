@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, FindOptionsWhere, In, Not, Repository } from 'typeorm';
 import { BookingEntity, BookingStatus, PaymentMethod } from './entities/booking.entity';
 import { BookingSeatEntity } from './entities/booking-seat.entity';
 import { SeatEntity } from '@/modules/seat-layouts/entities/seat.entity';
 import { TripEntity } from '@/modules/trips/entities/trip.entity';
+import { TripStopEntity } from '@/modules/trips/entities/trip-stop.entity';
 import { BookingMapper } from './booking.mapper';
 import { Booking } from './booking.domain';
 import { FilterBookingDto, SortBookingDto } from './dto/query-booking.dto';
@@ -13,12 +14,14 @@ import { IPaginationOptions } from '@/utils/types/pagination-options';
 import { PaginationResponseDto } from '@/utils/types/pagination-response.dto';
 import { NullableType } from '@/utils/types/nullable.type';
 import { randomBytes } from 'crypto';
+import { PaymentEntity, PaymentStatus, PaymentType } from '@/modules/payments/entities/payment.entity';
 
 const PAYMENT_EXPIRY_MINUTES = 15;
 const ACTIVE_BOOKING_STATUSES = [
     BookingStatus.PENDING_PAYMENT,
     BookingStatus.RESERVED,
     BookingStatus.CONFIRMED,
+    BookingStatus.COMPLETED,
 ];
 
 @Injectable()
@@ -32,11 +35,26 @@ export class BookingsRepository {
         private readonly seatRepo: Repository<SeatEntity>,
         @InjectRepository(TripEntity)
         private readonly tripRepo: Repository<TripEntity>,
+        @InjectRepository(TripStopEntity)
+        private readonly tripStopRepo: Repository<TripStopEntity>,
+        @InjectRepository(PaymentEntity)
+        private readonly paymentRepo: Repository<PaymentEntity>,
         private readonly dataSource: DataSource,
     ) { }
 
-    private generateBookingCode(): string {
-        return 'BK' + randomBytes(4).toString('hex').toUpperCase();
+    private async generateBookingCode(manager: DataSource['manager']): Promise<string> {
+        const date = new Date();
+        const yyyy = date.getUTCFullYear();
+        const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(date.getUTCDate()).padStart(2, '0');
+        const prefix = `BK-${yyyy}${mm}${dd}`;
+
+        while (true) {
+            const suffix = randomBytes(4).toString('hex').toUpperCase().slice(0, 5);
+            const bookingCode = `${prefix}-${suffix}`;
+            const existed = await manager.count(BookingEntity, { where: { bookingCode } });
+            if (!existed) return bookingCode;
+        }
     }
 
     async findManyWithPagination({
@@ -48,19 +66,44 @@ export class BookingsRepository {
         sortOptions?: SortBookingDto[] | null;
         paginationOptions: IPaginationOptions;
     }): Promise<PaginationResponseDto<Booking>> {
-        const where: FindOptionsWhere<BookingEntity> = {};
-        if (filterOptions?.userId) where.userId = filterOptions.userId;
-        if (filterOptions?.tripId) where.tripId = filterOptions.tripId;
-        if (filterOptions?.status) where.status = filterOptions.status;
-        if (filterOptions?.paymentMethod) where.paymentMethod = filterOptions.paymentMethod;
+        const qb = this.bookingRepo
+            .createQueryBuilder('booking')
+            .leftJoinAndSelect('booking.trip', 'trip')
+            .leftJoinAndSelect('trip.route', 'route')
+            .leftJoinAndSelect('route.fromLocation', 'fromLocation')
+            .leftJoinAndSelect('route.toLocation', 'toLocation')
+            .leftJoinAndSelect('trip.busCompany', 'busCompany');
 
-        const [entities, total] = await this.bookingRepo.findAndCount({
-            skip: (paginationOptions.page - 1) * paginationOptions.limit,
-            take: paginationOptions.limit,
-            where,
-            relations: ['trip', 'trip.route', 'trip.route.fromLocation', 'trip.route.toLocation', 'trip.busCompany'],
-            order: sortOptions?.reduce((acc, s) => ({ ...acc, [s.orderBy]: s.order }), { createdAt: 'DESC' }),
-        });
+        if (filterOptions?.userId) qb.andWhere('booking.userId = :userId', { userId: filterOptions.userId });
+        if (filterOptions?.tripId) qb.andWhere('booking.tripId = :tripId', { tripId: filterOptions.tripId });
+        if (filterOptions?.busCompanyId) {
+            qb.andWhere('trip.busCompanyId = :busCompanyId', { busCompanyId: filterOptions.busCompanyId });
+        }
+        if (filterOptions?.status) qb.andWhere('booking.status = :status', { status: filterOptions.status });
+        if (filterOptions?.paymentMethod) {
+            qb.andWhere('booking.paymentMethod = :paymentMethod', { paymentMethod: filterOptions.paymentMethod });
+        }
+        if (filterOptions?.departureDate) {
+            const date = new Date(filterOptions.departureDate);
+            const nextDay = new Date(date);
+            nextDay.setDate(nextDay.getDate() + 1);
+            qb.andWhere('trip.departureTime >= :from AND trip.departureTime < :to', {
+                from: date,
+                to: nextDay,
+            });
+        }
+
+        if (sortOptions?.length) {
+            sortOptions.forEach((s) => qb.addOrderBy(`booking.${s.orderBy}`, s.order));
+        } else {
+            qb.orderBy('booking.createdAt', 'DESC');
+        }
+
+        const total = await qb.getCount();
+        const entities = await qb
+            .skip((paginationOptions.page - 1) * paginationOptions.limit)
+            .take(paginationOptions.limit)
+            .getMany();
 
         return {
             meta: {
@@ -75,7 +118,7 @@ export class BookingsRepository {
 
     async findById(id: string): Promise<NullableType<Booking>> {
         const entity = await this.bookingRepo.findOne({
-            where: { id },
+            where: { bookingId: id },
             relations: ['trip', 'trip.route', 'trip.route.fromLocation', 'trip.route.toLocation', 'trip.busCompany'],
         });
         if (!entity) return null;
@@ -86,10 +129,24 @@ export class BookingsRepository {
         return BookingMapper.toDomain(entity, seats);
     }
 
+    async findEntityById(id: string): Promise<NullableType<BookingEntity>> {
+        return this.bookingRepo.findOne({
+            where: { bookingId: id },
+            relations: ['trip', 'trip.busCompany'],
+        });
+    }
+
     async findByCode(bookingCode: string): Promise<NullableType<Booking>> {
         const entity = await this.bookingRepo.findOne({ where: { bookingCode } });
         if (!entity) return null;
-        return this.findById(entity.id);
+        return this.findById(entity.bookingId);
+    }
+
+    async findEntityByCode(bookingCode: string): Promise<NullableType<BookingEntity>> {
+        return this.bookingRepo.findOne({
+            where: { bookingCode },
+            relations: ['trip', 'trip.busCompany'],
+        });
     }
 
     async getBookedSeatIds(tripId: string): Promise<string[]> {
@@ -103,16 +160,32 @@ export class BookingsRepository {
         return bookingSeats.map((bs) => bs.seatId);
     }
 
-    async create(userId: string, dto: CreateBookingDto): Promise<Booking> {
+    async create(userId: string | null, dto: CreateBookingDto, companyId?: string): Promise<Booking> {
         return this.dataSource.transaction(async (manager) => {
             // Verify trip exists and is active
             const trip = await manager.findOne(TripEntity, {
-                where: { id: dto.tripId },
+                where: { tripId: dto.tripId },
                 lock: { mode: 'pessimistic_write' },
             });
-            if (!trip) throw new BadRequestException('Trip not found');
+            if (!trip) throw new BadRequestException('trip_not_found');
+            if (companyId && trip.busCompanyId !== companyId) {
+                throw new ForbiddenException('forbidden_company_resource');
+            }
             if (!['SCHEDULED', 'ACTIVE'].includes(trip.status)) {
-                throw new BadRequestException('Trip is not available for booking');
+                throw new BadRequestException('trip_not_bookable');
+            }
+
+            const selectedStops = await manager.findBy(TripStopEntity, {
+                tripStopId: In([dto.pickupStopId, dto.dropoffStopId]),
+                tripId: dto.tripId,
+            });
+            if (selectedStops.length !== 2) {
+                throw new BadRequestException('invalid_trip_stop_selection');
+            }
+            const pickup = selectedStops.find((s) => s.tripStopId === dto.pickupStopId);
+            const dropoff = selectedStops.find((s) => s.tripStopId === dto.dropoffStopId);
+            if (!pickup || !dropoff || pickup.stopOrder >= dropoff.stopOrder) {
+                throw new BadRequestException('invalid_trip_stop_order');
             }
 
             // Check seat availability — lock to prevent race conditions
@@ -128,20 +201,23 @@ export class BookingsRepository {
 
             const conflictingSeats = dto.seatIds.filter((id) => bookedSeatIds.includes(id));
             if (conflictingSeats.length) {
-                throw new BadRequestException(
-                    `Seats already taken: ${conflictingSeats.join(', ')}`,
-                );
+                throw new BadRequestException('seats_already_booked');
             }
 
-            // Fetch seat prices
-            const seats = await manager.findBy(SeatEntity, { id: In(dto.seatIds) });
+            // Ensure seats belong to this trip's active bus layout
+            const seats = await manager
+                .createQueryBuilder(SeatEntity, 'seat')
+                .innerJoin('bus_version_layouts', 'bvl', 'bvl.seat_layout_id = seat.layout_id')
+                .where('bvl.bus_version_id = :busVersionId', { busVersionId: trip.busVersionId })
+                .andWhere('seat.seat_id IN (:...seatIds)', { seatIds: dto.seatIds })
+                .getMany();
             if (seats.length !== dto.seatIds.length) {
-                throw new BadRequestException('One or more seats not found');
+                throw new BadRequestException('invalid_trip_seat_selection');
             }
 
             const totalAmount = dto.seatIds.reduce((sum, seatId) => {
                 const seat = seats.find((s) => s.id === seatId);
-                return sum + Number(trip.basePrice) + Number(seat!.extraPrice);
+                return sum + Number(trip.basePrice) + Number(seat!.price);
             }, 0);
 
             const expiresAt =
@@ -154,9 +230,10 @@ export class BookingsRepository {
                     ? BookingStatus.RESERVED
                     : BookingStatus.PENDING_PAYMENT;
 
+            const bookingCode = await this.generateBookingCode(manager);
             const booking = manager.create(BookingEntity, {
-                bookingCode: this.generateBookingCode(),
-                userId,
+                bookingCode,
+                userId: userId ?? undefined,
                 tripId: dto.tripId,
                 totalAmount,
                 paymentMethod: dto.paymentMethod,
@@ -167,12 +244,24 @@ export class BookingsRepository {
 
             const bookingSeats = seats.map((seat) =>
                 manager.create(BookingSeatEntity, {
-                    bookingId: savedBooking.id,
+                    bookingId: savedBooking.bookingId,
                     seatId: seat.id,
-                    price: Number(trip.basePrice) + Number(seat.extraPrice),
+                    price: Number(trip.basePrice) + Number(seat.price),
                 }),
             );
             const savedSeats = await manager.save(BookingSeatEntity, bookingSeats);
+
+            const paymentType =
+                dto.paymentMethod === PaymentMethod.ONLINE
+                    ? PaymentType.ONLINE
+                    : PaymentType.PAY_ON_BOARD;
+            const payment = manager.create(PaymentEntity, {
+                bookingId: savedBooking.bookingId,
+                paymentType,
+                amount: totalAmount,
+                status: PaymentStatus.PENDING,
+            });
+            await manager.save(PaymentEntity, payment);
 
             const result = BookingMapper.toDomain(savedBooking, savedSeats);
             return result;
@@ -180,11 +269,11 @@ export class BookingsRepository {
     }
 
     async updateStatus(id: string, status: BookingStatus): Promise<void> {
-        await this.bookingRepo.update(id, { status });
+        await this.bookingRepo.update({ bookingId: id }, { status });
     }
 
     async cancel(id: string): Promise<void> {
-        await this.bookingRepo.update(id, { status: BookingStatus.CANCELLED });
+        await this.bookingRepo.update({ bookingId: id }, { status: BookingStatus.CANCELLED });
     }
 
     async expireOldBookings(): Promise<number> {

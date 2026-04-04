@@ -9,35 +9,43 @@ export enum RevenuePaymentType {
 
 @Entity('revenues')
 export class RevenueEntity {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+    @PrimaryGeneratedColumn('uuid', { name: 'revenue_id' })
+    revenueId: string;
 
     @ManyToOne(() => BusCompanyEntity, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'busCompanyId' })
+    @JoinColumn({ name: 'company_id', referencedColumnName: 'busCompanyId' })
     company: BusCompanyEntity;
 
-    @Column()
-    companyId: string;
+    @Column({ name: 'company_id' })
+    busCompanyId: string;
 
     @ManyToOne(() => BookingEntity, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'bookingId' })
+    @JoinColumn({ name: 'booking_id', referencedColumnName: 'bookingId' })
     booking: BookingEntity;
 
-    @Column()
+    @Column({ name: 'booking_id' })
     bookingId: string;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
+    @Column({ name: 'gross_amount', type: 'decimal', precision: 10, scale: 2, nullable: true })
     grossAmount: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
+    @Column({ name: 'commission', type: 'decimal', precision: 10, scale: 2, nullable: true })
     commission: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
+    @Column({ name: 'net_amount', type: 'decimal', precision: 10, scale: 2, nullable: true })
     netAmount: number;
 
-    @Column({ type: 'enum', enum: RevenuePaymentType })
+    @Column({ name: 'payment_type', type: 'enum', enum: RevenuePaymentType, nullable: true })
     paymentType: RevenuePaymentType;
 
-    @CreateDateColumn({ type: 'timestamptz' })
+    @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
     createdAt: Date;
+
+    get id(): string {
+        return this.revenueId;
+    }
+
+    get companyId(): string {
+        return this.busCompanyId;
+    }
 }

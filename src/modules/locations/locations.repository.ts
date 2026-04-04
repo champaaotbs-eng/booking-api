@@ -17,6 +17,29 @@ export class LocationsRepository {
         private readonly repo: Repository<LocationEntity>,
     ) { }
 
+    private async hasReferences(locationId: string): Promise<boolean> {
+        const routeRows = await this.repo.query(
+            `
+            SELECT COUNT(*)::int AS total
+            FROM routes
+            WHERE (from_location_id = $1 OR to_location_id = $1)
+              AND deleted_at IS NULL
+            `,
+            [locationId],
+        );
+        const stopRows = await this.repo.query(
+            `
+            SELECT COUNT(*)::int AS total
+            FROM route_stops
+            WHERE location_id = $1
+            `,
+            [locationId],
+        );
+        const routeTotal = Number(routeRows?.[0]?.total ?? 0);
+        const stopTotal = Number(stopRows?.[0]?.total ?? 0);
+        return routeTotal + stopTotal > 0;
+    }
+
     async findManyWithPagination({
         filterOptions,
         sortOptions,
@@ -51,7 +74,10 @@ export class LocationsRepository {
     }
 
     async findById(id: string): Promise<NullableType<Location>> {
-        const entity = await this.repo.findOne({ where: { id }, relations: ['province', 'ward'] });
+        const entity = await this.repo.findOne({
+            where: { locationId: id },
+            relations: ['province', 'ward'],
+        });
         return entity ? LocationMapper.toDomain(entity) : null;
     }
 
@@ -62,11 +88,27 @@ export class LocationsRepository {
     }
 
     async update(id: string, dto: UpdateLocationDto): Promise<NullableType<Location>> {
-        await this.repo.update(id, dto);
+        const hasReferences = await this.hasReferences(id);
+        if (hasReferences) {
+            throw new Error('location_immutable');
+        }
+        await this.repo.update({ locationId: id }, dto);
+        return this.findById(id);
+    }
+
+    async toggleActive(id: string): Promise<NullableType<Location>> {
+        const entity = await this.repo.findOne({ where: { locationId: id } });
+        if (!entity) return null;
+        entity.isActive = !entity.isActive;
+        await this.repo.save(entity);
         return this.findById(id);
     }
 
     async softDelete(id: string): Promise<void> {
-        await this.repo.update(id, { isActive: false });
+        const hasReferences = await this.hasReferences(id);
+        if (hasReferences) {
+            throw new Error('location_immutable');
+        }
+        await this.repo.update({ locationId: id }, { isActive: false });
     }
 }

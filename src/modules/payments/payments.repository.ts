@@ -14,13 +14,21 @@ export class PaymentsRepository {
     ) { }
 
     async findById(id: string): Promise<NullableType<Payment>> {
-        const entity = await this.repo.findOne({ where: { id } });
+        const entity = await this.repo.findOne({ where: { paymentId: id } });
         return entity ? PaymentMapper.toDomain(entity) : null;
     }
 
     async findByBookingId(bookingId: string): Promise<Payment[]> {
         const entities = await this.repo.find({ where: { bookingId }, order: { createdAt: 'DESC' } });
         return entities.map(PaymentMapper.toDomain);
+    }
+
+    async findLatestByBookingId(bookingId: string): Promise<NullableType<Payment>> {
+        const entity = await this.repo.findOne({
+            where: { bookingId },
+            order: { createdAt: 'DESC' },
+        });
+        return entity ? PaymentMapper.toDomain(entity) : null;
     }
 
     async create(data: Partial<PaymentEntity>): Promise<Payment> {
@@ -30,7 +38,7 @@ export class PaymentsRepository {
     }
 
     async markPaid(id: string, transactionCode: string, gatewayResponse: Record<string, unknown>): Promise<void> {
-        await this.repo.update(id, {
+        await this.repo.update({ paymentId: id }, {
             status: PaymentStatus.PAID,
             transactionCode,
             gatewayResponse,
@@ -39,9 +47,17 @@ export class PaymentsRepository {
     }
 
     async markFailed(id: string, gatewayResponse: Record<string, unknown>): Promise<void> {
-        await this.repo.update(id, {
+        await this.repo.update({ paymentId: id }, {
             status: PaymentStatus.FAILED,
             gatewayResponse,
+            completedAt: new Date(),
+        });
+    }
+
+    async markConfirmedOnBoard(id: string, evidence?: string): Promise<void> {
+        await this.repo.update({ paymentId: id }, {
+            status: PaymentStatus.CONFIRMED_ON_BOARD,
+            evidence,
             completedAt: new Date(),
         });
     }

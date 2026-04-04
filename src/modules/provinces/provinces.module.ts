@@ -3,12 +3,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ProvinceEntity } from './entities/province.entity';
 import { WardEntity } from './entities/ward.entity';
 import { ProvincesService } from './provinces.service';
-import { ProvincesController, WardsController } from './provinces.controller';
+import { ProvincesController } from './provinces.controller';
 import { ProvincesRepository } from './provinces.repository';
 
 @Module({
     imports: [TypeOrmModule.forFeature([ProvinceEntity, WardEntity])],
-    controllers: [ProvincesController, WardsController],
+    controllers: [ProvincesController],
     providers: [ProvincesService, ProvincesRepository],
     exports: [ProvincesService, ProvincesRepository],
 })

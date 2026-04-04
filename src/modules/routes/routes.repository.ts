@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { RouteEntity } from './entities/route.entity';
+import { TripEntity } from '@/modules/trips/entities/trip.entity';
 import { RouteMapper } from './route.mapper';
 import { Route } from './route.domain';
 import { FilterRouteDto, SortRouteDto } from './dto/query-route.dto';
@@ -15,6 +16,8 @@ export class RoutesRepository {
     constructor(
         @InjectRepository(RouteEntity)
         private readonly repo: Repository<RouteEntity>,
+        @InjectRepository(TripEntity)
+        private readonly tripRepo: Repository<TripEntity>,
     ) { }
 
     async findManyWithPagination({
@@ -51,8 +54,20 @@ export class RoutesRepository {
 
     async findById(id: string): Promise<NullableType<Route>> {
         const entity = await this.repo.findOne({
-            where: { id },
-            relations: ['fromLocation', 'fromLocation.province', 'toLocation', 'toLocation.province'],
+            where: { routeId: id },
+            relations: [
+                'fromLocation',
+                'fromLocation.province',
+                'toLocation',
+                'toLocation.province',
+                'stops',
+                'stops.location',
+            ],
+            order: {
+                stops: {
+                    stopOrder: 'ASC',
+                },
+            },
         });
         return entity ? RouteMapper.toDomain(entity) : null;
     }
@@ -64,11 +79,19 @@ export class RoutesRepository {
     }
 
     async update(id: string, dto: UpdateRouteDto): Promise<NullableType<Route>> {
-        await this.repo.update(id, dto);
+        const tripCount = await this.tripRepo.count({ where: { routeId: id } });
+        if (tripCount > 0) {
+            throw new Error('route_immutable');
+        }
+        await this.repo.update({ routeId: id }, dto);
         return this.findById(id);
     }
 
     async remove(id: string): Promise<void> {
-        await this.repo.delete(id);
+        const tripCount = await this.tripRepo.count({ where: { routeId: id } });
+        if (tripCount > 0) {
+            throw new Error('route_in_use');
+        }
+        await this.repo.delete({ routeId: id });
     }
 }

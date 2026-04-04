@@ -62,30 +62,4 @@ export class BusCompaniesService {
         await this.findOne(id);
         return this.busCompaniesRepository.remove(id);
     }
-
-    async findAdmins(companyId: string) {
-        await this.findOne(companyId);
-        return this.busCompaniesRepository.findAdminsByCompany(companyId);
-    }
-
-    async addAdmin(companyId: string, dto: AddBusCompanyAdminDto) {
-        await this.findOne(companyId);
-
-        const admin = await this.busCompaniesRepository.findSystemAdminById(dto.adminId);
-        if (!admin) {
-            throw new NotFoundException('Admin not found');
-        }
-
-        const existedCompanyAdmin = await this.busCompaniesRepository.findCompanyAdmin(companyId, dto.adminId);
-        if (existedCompanyAdmin) {
-            throw new ConflictException('Admin is already assigned to this bus company');
-        }
-
-        return this.busCompaniesRepository.addAdmin(companyId, dto);
-    }
-
-    async removeAdmin(companyId: string, adminId: string) {
-        await this.findOne(companyId);
-        return this.busCompaniesRepository.removeAdmin(companyId, adminId);
-    }
 }

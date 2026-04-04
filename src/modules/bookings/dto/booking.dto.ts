@@ -12,6 +12,14 @@ export class CreateBookingDto {
     @IsUUID('all', { each: true })
     seatIds: string[];
 
+    @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
+    @IsUUID()
+    pickupStopId: string;
+
+    @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
+    @IsUUID()
+    dropoffStopId: string;
+
     @IsEnum(PaymentMethod)
     paymentMethod: PaymentMethod;
 }

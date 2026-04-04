@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RouteEntity } from './entities/route.entity';
+import { TripEntity } from '@/modules/trips/entities/trip.entity';
 import { RoutesService } from './routes.service';
 import { RoutesController } from './routes.controller';
 import { RoutesRepository } from './routes.repository';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([RouteEntity])],
+    imports: [TypeOrmModule.forFeature([RouteEntity, TripEntity])],
     controllers: [RoutesController],
     providers: [RoutesService, RoutesRepository],
     exports: [RoutesService, RoutesRepository],

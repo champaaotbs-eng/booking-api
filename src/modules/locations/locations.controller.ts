@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { LocationsService } from './locations.service';
 import { Public } from '@/decorator/customize.decorator';
 import { QueryDto } from '@/utils/types/query.dto';
@@ -31,8 +31,9 @@ export class LocationsController {
         return this.locationsService.update(id, dto);
     }
 
-    @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.locationsService.remove(id);
+    @Patch(':id/toggle-active')
+    toggleActive(@Param('id') id: string) {
+        return this.locationsService.toggleActive(id);
     }
+
 }

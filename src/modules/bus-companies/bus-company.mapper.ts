@@ -11,6 +11,15 @@ export class BusCompanyMapper {
         domain.phone = raw.phone;
         domain.serviceFee = raw.serviceFee;
         domain.logoUrl = raw.logoUrl;
+        domain.publicId = raw.publicId;
+        if (raw.companyAdmins) {
+            domain.companyAdmins = raw.companyAdmins.map(admin => ({
+                adminId: admin.adminId,
+                position: admin.position,
+                username: admin.admin.username,
+                fullName: admin.admin.fullName,
+            }));
+        }
         domain.status = raw.status;
         domain.createdAt = raw.createdAt;
         return domain;

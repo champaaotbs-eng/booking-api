@@ -18,7 +18,7 @@ export class ProvincesService {
 
     async findOneProvince(id: string) {
         const province = await this.provincesRepository.findProvinceById(id);
-        if (!province) throw new NotFoundException('Province not found');
+        if (!province) throw new NotFoundException('province_not_found');
         return province;
     }
 
@@ -46,7 +46,7 @@ export class ProvincesService {
 
     async findOneWard(id: string) {
         const ward = await this.provincesRepository.findWardById(id);
-        if (!ward) throw new NotFoundException('Ward not found');
+        if (!ward) throw new NotFoundException('ward_not_found');
         return ward;
     }
 

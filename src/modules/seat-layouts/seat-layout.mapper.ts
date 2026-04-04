@@ -10,7 +10,6 @@ export class SeatLayoutMapper {
         domain.name = raw.name;
         domain.rows = raw.rows;
         domain.columns = raw.columns;
-        domain.floors = raw.floors;
         domain.createdAt = raw.createdAt;
         return domain;
     }
@@ -26,7 +25,7 @@ export class SeatMapper {
         domain.col = raw.col;
         domain.floor = raw.floor;
         domain.seatType = raw.seatType;
-        domain.extraPrice = Number(raw.extraPrice);
+        domain.price = Number(raw.price);
         return domain;
     }
 }

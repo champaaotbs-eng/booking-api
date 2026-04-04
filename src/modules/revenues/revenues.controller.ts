@@ -1,30 +1,22 @@
-import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { RevenuesService } from './revenues.service';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterRevenueDto, SortRevenueDto } from './dto/query-revenue.dto';
-import { CreateRevenueDto } from './dto/revenue.dto';
 
-@Controller('revenues')
+@Controller()
 export class RevenuesController {
     constructor(private readonly revenuesService: RevenuesService) { }
 
-    @Get()
-    findAll(@Query() query: QueryDto<FilterRevenueDto, SortRevenueDto>) {
-        return this.revenuesService.findAll(query);
+    @Get('admin/revenues')
+    findAdmin(@Query() query: QueryDto<FilterRevenueDto, SortRevenueDto>) {
+        return this.revenuesService.findAdmin(query);
     }
 
-    @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.revenuesService.findOne(id);
-    }
-
-    @Post()
-    create(@Body() dto: CreateRevenueDto) {
-        return this.revenuesService.create(dto);
-    }
-
-    @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.revenuesService.remove(id);
+    @Get('company/revenues')
+    findCompany(
+        @Query('companyId') companyId: string,
+        @Query() query: QueryDto<FilterRevenueDto, SortRevenueDto>,
+    ) {
+        return this.revenuesService.findCompany(companyId, query);
     }
 }

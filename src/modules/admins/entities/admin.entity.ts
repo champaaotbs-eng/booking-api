@@ -5,6 +5,7 @@ import {
     CreateDateColumn,
     DeleteDateColumn,
     Entity,
+    JoinColumn,
     ManyToOne,
     PrimaryGeneratedColumn,
     UpdateDateColumn,
@@ -27,10 +28,8 @@ export class AdminEntity {
     @Column({ name: 'password' })
     password: string;
 
-    @Column({ name: 'type', nullable: true, enum: ADMIN_TYPE })
-    type?: ADMIN_TYPE;
-
     @ManyToOne(() => RoleEntity, { eager: true })
+    @JoinColumn({ name: 'role_id' })
     role: RoleEntity;
 
     @Column({ name: 'avatar_url', nullable: true })

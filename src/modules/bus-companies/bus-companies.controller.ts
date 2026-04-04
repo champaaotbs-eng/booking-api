@@ -35,22 +35,4 @@ export class BusCompaniesController {
     remove(@Param('id', new ParseUUIDPipe()) id: string) {
         return this.busCompaniesService.remove(id);
     }
-
-    @Get(':id/admins')
-    findAdmins(@Param('id', new ParseUUIDPipe()) id: string) {
-        return this.busCompaniesService.findAdmins(id);
-    }
-
-    @Post(':id/admins')
-    addAdmin(@Param('id', new ParseUUIDPipe()) companyId: string, @Body() dto: AddBusCompanyAdminDto) {
-        return this.busCompaniesService.addAdmin(companyId, dto);
-    }
-
-    @Delete(':id/admins/:adminId')
-    removeAdmin(
-        @Param('id', new ParseUUIDPipe()) companyId: string,
-        @Param('adminId', new ParseUUIDPipe()) adminId: string,
-    ) {
-        return this.busCompaniesService.removeAdmin(companyId, adminId);
-    }
 }

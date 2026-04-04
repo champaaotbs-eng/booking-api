@@ -19,7 +19,7 @@ export class CreateSeatDto {
 
     @IsOptional()
     @IsNumber()
-    extraPrice?: number;
+    price?: number;
 }
 
 export class UpdateSeatDto extends PartialType(CreateSeatDto) { }
@@ -35,11 +35,6 @@ export class CreateSeatLayoutDto {
 
     @IsInt() @Min(1) rows: number;
     @IsInt() @Min(1) columns: number;
-
-    @IsOptional()
-    @IsInt()
-    @Min(1)
-    floors?: number;
 
     @IsOptional()
     @IsArray()

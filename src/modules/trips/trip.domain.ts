@@ -1,5 +1,6 @@
 import { Allow } from 'class-validator';
 import { TripStatus } from './entities/trip.entity';
+import { RouteStopType } from '@/modules/route-stops/entities/route-stop.entity';
 
 export class Trip {
     @Allow() id: string;
@@ -16,16 +17,19 @@ export class Trip {
     @Allow() isPublished: boolean;
     @Allow() cancelReason?: string;
     @Allow() createdAt: Date;
-    @Allow() pickupPoints?: TripStop[];
-    @Allow() dropoffPoints?: TripStop[];
+    @Allow() tripStops?: TripStop[];
 }
 
 export class TripStop {
     @Allow() id: string;
-    @Allow() locationId: string;
+    @Allow() stopId: string;
+    @Allow() routeStopId: string;
+    @Allow() locationId?: string;
     @Allow() locationName?: string;
     @Allow() locationAddress?: string;
-    @Allow() time?: Date;
+    @Allow() stopType: RouteStopType;
+    @Allow() pickupTime?: Date;
+    @Allow() dropoffTime?: Date;
     @Allow() note?: string;
     @Allow() sortOrder: number;
 }

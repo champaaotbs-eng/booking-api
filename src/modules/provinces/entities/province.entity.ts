@@ -2,15 +2,19 @@ import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('provinces')
 export class ProvinceEntity {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+    @PrimaryGeneratedColumn('uuid', { name: 'province_id' })
+    provinceId: string;
 
-    @Column({ length: 100 })
+    @Column({ name: 'name', length: 100 })
     name: string;
 
-    @Column({ unique: true, length: 20 })
+    @Column({ name: 'code', unique: true, length: 20 })
     code: string;
 
-    @Column({ nullable: true })
+    @Column({ name: 'division_type', nullable: true })
     divisionType?: string;
+
+    get id(): string {
+        return this.provinceId;
+    }
 }

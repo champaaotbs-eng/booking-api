@@ -4,12 +4,14 @@ import {
     Entity,
     JoinColumn,
     ManyToOne,
+    OneToMany,
     PrimaryGeneratedColumn,
     UpdateDateColumn,
 } from 'typeorm';
 import { RouteEntity } from '@/modules/routes/entities/route.entity';
 import { BusVersionEntity } from '@/modules/buses/entities/bus-version.entity';
 import { BusCompanyEntity } from '@/modules/bus-companies/entities/bus-company.entity';
+import { TripStopEntity } from './trip-stop.entity';
 
 export enum TripStatus {
     SCHEDULED = 'SCHEDULED',
@@ -20,51 +22,58 @@ export enum TripStatus {
 
 @Entity('trips')
 export class TripEntity {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+    @PrimaryGeneratedColumn('uuid', { name: 'trip_id' })
+    tripId: string;
 
     @ManyToOne(() => RouteEntity, { onDelete: 'RESTRICT' })
-    @JoinColumn({ name: 'routeId' })
+    @JoinColumn({ name: 'route_id', referencedColumnName: 'routeId' })
     route: RouteEntity;
 
-    @Column()
+    @Column({ name: 'route_id' })
     routeId: string;
 
-    @ManyToOne(() => BusVersionEntity, { nullable: true, onDelete: 'SET NULL' })
-    @JoinColumn({ name: 'busVersionId' })
-    busVersion?: BusVersionEntity;
+    @ManyToOne(() => BusVersionEntity, { onDelete: 'RESTRICT' })
+    @JoinColumn({ name: 'bus_version_id', referencedColumnName: 'busVersionId' })
+    busVersion: BusVersionEntity;
 
-    @Column({ nullable: true })
-    busVersionId?: string;
+    @Column({ name: 'bus_version_id' })
+    busVersionId: string;
 
     @ManyToOne(() => BusCompanyEntity)
-    @JoinColumn({ name: 'busCompanyId' })
+    @JoinColumn({ name: 'bus_company_id', referencedColumnName: 'busCompanyId' })
     busCompany: BusCompanyEntity;
 
-    @Column()
+    @Column({ name: 'bus_company_id' })
     busCompanyId: string;
 
-    @Column({ type: 'timestamptz' })
+    @Column({ name: 'departure_time', type: 'timestamptz' })
     departureTime: Date;
 
-    @Column({ type: 'timestamptz' })
+    @Column({ name: 'arrival_time', type: 'timestamptz' })
     arrivalTime: Date;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
+    @Column({ name: 'base_price', type: 'decimal', precision: 10, scale: 2 })
     basePrice: number;
 
-    @Column({ default: TripStatus.SCHEDULED })
+    @Column({ name: 'status', default: TripStatus.SCHEDULED })
     status: TripStatus;
 
-    @Column({ default: true })
+    @Column({ name: 'is_published', default: true })
     isPublished: boolean;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ name: 'cancel_reason', type: 'text', nullable: true })
     cancelReason?: string;
 
-    @CreateDateColumn({ type: 'timestamptz' })
+    @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
     createdAt: Date;
 
-    @UpdateDateColumn({ type: 'timestamptz' })
+    @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
     updatedAt: Date;
+
+    @OneToMany(() => TripStopEntity, (stop) => stop.trip)
+    tripStops?: TripStopEntity[];
+
+    get id(): string {
+        return this.tripId;
+    }
 }

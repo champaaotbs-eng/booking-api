@@ -3,47 +3,50 @@ import { BookingsService } from './bookings.service';
 import { UserInfo } from '@/decorator/customize.decorator';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterBookingDto, SortBookingDto } from './dto/query-booking.dto';
-import { CancelBookingDto, CreateBookingDto } from './dto/booking.dto';
+import { CreateBookingDto } from './dto/booking.dto';
 
-@Controller('bookings')
+@Controller()
 export class BookingsController {
     constructor(private readonly bookingsService: BookingsService) { }
 
-    /** Admin: list all bookings */
-    @Get()
-    findAll(@Query() query: QueryDto<FilterBookingDto, SortBookingDto>) {
-        return this.bookingsService.findAll(query);
+    @Post('bookings')
+    create(@UserInfo() user: { userId: string }, @Body() dto: CreateBookingDto) {
+        return this.bookingsService.create(user.userId, dto);
     }
 
-    /** Authenticated user: list own bookings */
-    @Get('mine')
-    findMine(
-        @UserInfo() user: { id: string },
+    @Post('company/bookings')
+    createCompany(@Query('companyId') companyId: string, @Body() dto: CreateBookingDto) {
+        return this.bookingsService.createCompany(companyId, dto);
+    }
+
+    @Get('bookings/my')
+    findMy(
+        @UserInfo() user: { userId: string },
         @Query() query: QueryDto<FilterBookingDto, SortBookingDto>,
     ) {
-        return this.bookingsService.findMine(user.id, query);
+        return this.bookingsService.findMy(user.userId, query);
     }
 
-    @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.bookingsService.findOne(id);
+    @Get('bookings/:code')
+    findOneByCode(@Param('code') code: string, @UserInfo() user: { userId: string }) {
+        return this.bookingsService.findOneByCode(code, user.userId);
     }
 
-    /** Create a new booking (authenticated users only) */
-    @Post()
-    create(@UserInfo() user: { id: string }, @Body() dto: CreateBookingDto) {
-        return this.bookingsService.create(user.id, dto);
+    @Patch('bookings/:id/cancel')
+    cancel(@Param('id') id: string, @UserInfo() user: { userId: string }) {
+        return this.bookingsService.cancel(id, user.userId);
     }
 
-    /** Cancel booking */
-    @Patch(':id/cancel')
-    cancel(@Param('id') id: string, @UserInfo() user: { id: string }) {
-        return this.bookingsService.cancel(id, user.id);
+    @Get('admin/bookings')
+    findAdmin(@Query() query: QueryDto<FilterBookingDto, SortBookingDto>) {
+        return this.bookingsService.findAdmin(query);
     }
 
-    /** Admin/Company: confirm pay-on-board booking */
-    @Patch(':id/confirm')
-    confirm(@Param('id') id: string) {
-        return this.bookingsService.confirmPayOnBoard(id);
+    @Get('company/bookings')
+    findCompany(
+        @Query('companyId') companyId: string,
+        @Query() query: QueryDto<FilterBookingDto, SortBookingDto>,
+    ) {
+        return this.bookingsService.findCompany(companyId, query);
     }
 }

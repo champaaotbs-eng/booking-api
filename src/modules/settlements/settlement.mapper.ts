@@ -8,10 +8,11 @@ export class SettlementMapper {
         domain.companyId = raw.companyId;
         domain.periodFrom = raw.periodFrom;
         domain.periodTo = raw.periodTo;
-        domain.totalGross = raw.totalGross;
-        domain.totalCommission = raw.totalCommission;
-        domain.totalNet = raw.totalNet;
+        domain.totalGross = Number(raw.totalGross);
+        domain.totalCommission = Number(raw.totalCommission);
+        domain.totalNet = Number(raw.totalNet);
         domain.status = raw.status;
+        domain.evidence = raw.evidence;
         domain.createdAt = raw.createdAt;
         return domain;
     }

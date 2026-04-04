@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
     IsArray,
+    IsBoolean,
     IsDateString,
     IsEnum,
     IsNotEmpty,
@@ -15,15 +16,24 @@ import { i18nValidationMessage } from 'nestjs-i18n';
 import { I18nTranslations } from '@/generated/i18n.generated';
 import { PartialType } from '@nestjs/mapped-types';
 import { TripStatus } from '../entities/trip.entity';
+import { RouteStopType } from '@/modules/route-stops/entities/route-stop.entity';
 
-export class CreateTripStopDto {
+export class UpdateTripStopDto {
     @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
     @IsUUID()
-    locationId: string;
+    stopId: string;
+
+    @IsOptional()
+    @IsEnum(RouteStopType)
+    stopType?: RouteStopType;
 
     @IsOptional()
     @IsDateString()
-    time?: string;
+    pickupTime?: string;
+
+    @IsOptional()
+    @IsDateString()
+    dropoffTime?: string;
 
     @IsOptional()
     @IsString()
@@ -61,16 +71,8 @@ export class CreateTripDto {
     basePrice: number;
 
     @IsOptional()
-    @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => CreateTripStopDto)
-    pickupPoints?: CreateTripStopDto[];
-
-    @IsOptional()
-    @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => CreateTripStopDto)
-    dropoffPoints?: CreateTripStopDto[];
+    @IsBoolean()
+    isPublished?: boolean;
 }
 
 export class UpdateTripDto extends PartialType(CreateTripDto) {
@@ -81,4 +83,17 @@ export class UpdateTripDto extends PartialType(CreateTripDto) {
     @IsOptional()
     @IsString()
     cancelReason?: string;
+}
+
+export class CancelTripDto {
+    @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
+    @IsString()
+    cancelReason: string;
+}
+
+export class PatchTripStopsDto {
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => UpdateTripStopDto)
+    stops: UpdateTripStopDto[];
 }

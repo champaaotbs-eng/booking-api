@@ -1,41 +1,51 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
-import { Public } from '@/decorator/customize.decorator';
-import { InitiatePaymentDto, VnpayCallbackDto } from './dto/payment.dto';
+import { Public, UserInfo } from '@/decorator/customize.decorator';
+import {
+    ConfirmOnBoardPaymentDto,
+    InitiatePaymentDto,
+    MomoCallbackDto,
+    VnpayCallbackDto,
+} from './dto/payment.dto';
 
-@Controller('payments')
+@Controller()
 export class PaymentsController {
     constructor(private readonly paymentsService: PaymentsService) { }
 
-    @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.paymentsService.findById(id);
+    @Get('payments/:bookingId')
+    findByBooking(
+        @Param('bookingId') bookingId: string,
+        @UserInfo() user: { userId?: string; adminId?: string },
+    ) {
+        return this.paymentsService.findByBooking(bookingId, user);
     }
 
-    @Get('booking/:bookingId')
-    findByBooking(@Param('bookingId') bookingId: string) {
-        return this.paymentsService.findByBooking(bookingId);
+    @Post('payments/initiate')
+    initiate(
+        @Body() dto: InitiatePaymentDto,
+        @UserInfo() user: { userId?: string; adminId?: string },
+    ) {
+        return this.paymentsService.initiateOnlinePayment(dto, user);
     }
 
-    @Post('initiate')
-    initiate(@Body() dto: InitiatePaymentDto) {
-        return this.paymentsService.initiateOnlinePayment(dto);
-    }
-
-    @Get('vnpay/return')
+    @Post('payments/callback/vnpay')
     @Public()
-    vnpayReturn(@Query() query: VnpayCallbackDto) {
-        return this.paymentsService.handleVnpayCallback(query);
+    vnpayCallback(@Body() body: VnpayCallbackDto) {
+        return this.paymentsService.handleVnpayCallback(body);
     }
 
-    @Get('vnpay/ipn')
+    @Post('payments/callback/momo')
     @Public()
-    vnpayIpn(@Query() query: VnpayCallbackDto) {
-        return this.paymentsService.handleVnpayCallback(query);
+    momoCallback(@Body() body: MomoCallbackDto) {
+        return this.paymentsService.handleMomoCallback(body);
     }
 
-    @Post('confirm-on-board/:bookingId')
-    confirmOnBoard(@Param('bookingId') bookingId: string) {
-        return this.paymentsService.confirmOnBoardPayment(bookingId);
+    @Patch('company/payments/:id/confirm-on-board')
+    confirmOnBoard(
+        @Param('id') paymentId: string,
+        @Query('companyId') companyId: string,
+        @Body() dto: ConfirmOnBoardPaymentDto,
+    ) {
+        return this.paymentsService.confirmOnBoardPayment(paymentId, companyId, dto.evidence);
     }
 }

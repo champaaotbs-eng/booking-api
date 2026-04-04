@@ -8,34 +8,45 @@ export enum SettlementStatus {
 
 @Entity('settlements')
 export class SettlementEntity {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+    @PrimaryGeneratedColumn('uuid', { name: 'settlement_id' })
+    settlementId: string;
 
     @ManyToOne(() => BusCompanyEntity, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'busCompanyId' })
+    @JoinColumn({ name: 'company_id', referencedColumnName: 'busCompanyId' })
     company: BusCompanyEntity;
 
-    @Column()
-    companyId: string;
+    @Column({ name: 'company_id' })
+    busCompanyId: string;
 
-    @Column({ type: 'date' })
+    @Column({ name: 'period_from', type: 'date' })
     periodFrom: string;
 
-    @Column({ type: 'date' })
+    @Column({ name: 'period_to', type: 'date' })
     periodTo: string;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
+    @Column({ name: 'total_gross', type: 'decimal', precision: 10, scale: 2, nullable: true })
     totalGross: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
+    @Column({ name: 'total_commission', type: 'decimal', precision: 10, scale: 2, nullable: true })
     totalCommission: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
+    @Column({ name: 'total_net', type: 'decimal', precision: 10, scale: 2, nullable: true })
     totalNet: number;
 
-    @Column({ default: SettlementStatus.PENDING })
+    @Column({ name: 'status', default: SettlementStatus.PENDING })
     status: SettlementStatus;
 
-    @CreateDateColumn({ type: 'timestamptz' })
+    @Column({ name: 'evidence', nullable: true })
+    evidence?: string;
+
+    @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
     createdAt: Date;
+
+    get id(): string {
+        return this.settlementId;
+    }
+
+    get companyId(): string {
+        return this.busCompanyId;
+    }
 }

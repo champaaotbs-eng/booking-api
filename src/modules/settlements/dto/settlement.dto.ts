@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsUUID } from 'class-validator';
+import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 import { I18nTranslations } from '@/generated/i18n.generated';
 import { PartialType } from '@nestjs/mapped-types';
@@ -16,22 +16,16 @@ export class CreateSettlementDto {
     @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
     @IsDateString()
     periodTo: string;
-
-    @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
-    @IsNumber()
-    totalGross: number;
-
-    @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
-    @IsNumber()
-    totalCommission: number;
-
-    @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
-    @IsNumber()
-    totalNet: number;
 }
 
 export class UpdateSettlementDto extends PartialType(CreateSettlementDto) {
     @IsOptional()
     @IsEnum(SettlementStatus)
     status?: SettlementStatus;
+}
+
+export class MarkPaidSettlementDto {
+    @IsOptional()
+    @IsString()
+    evidence?: string;
 }

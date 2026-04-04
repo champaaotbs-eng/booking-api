@@ -4,17 +4,17 @@ import { SeatLayoutEntity } from './seat-layout.entity';
 
 @Entity('bus_version_layouts')
 export class BusVersionLayoutEntity {
-    @PrimaryColumn()
+    @PrimaryColumn({ name: 'bus_version_id' })
     busVersionId: string;
 
-    @PrimaryColumn()
+    @PrimaryColumn({ name: 'seat_layout_id' })
     seatLayoutId: string;
 
     @ManyToOne(() => BusVersionEntity, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'busVersionId' })
+    @JoinColumn({ name: 'bus_version_id', referencedColumnName: 'busVersionId' })
     busVersion: BusVersionEntity;
 
     @ManyToOne(() => SeatLayoutEntity, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'seatLayoutId' })
+    @JoinColumn({ name: 'seat_layout_id', referencedColumnName: 'seatLayoutId' })
     seatLayout: SeatLayoutEntity;
 }

@@ -60,7 +60,10 @@ export class BusCompaniesRepository {
     }
 
     async findById(id: string): Promise<NullableType<BusCompany>> {
-        const entity = await this.repo.findOne({ where: { busCompanyId: id } });
+        const entity = await this.repo.findOne({
+            where: { busCompanyId: id },
+            relations: { companyAdmins: { admin: true } }
+        });
         return entity ? BusCompanyMapper.toDomain(entity) : null;
     }
 
@@ -75,40 +78,30 @@ export class BusCompaniesRepository {
     }
 
     async create(dto: CreateBusCompanyDto): Promise<BusCompany> {
-        const entity = this.repo.create({ ...dto, serviceFee: dto.serviceFee ?? 0 });
-        const saved = await this.repo.save(entity);
+        const saved = await this.repo.save(this.repo.create({ ...dto, serviceFee: dto.serviceFee ?? 0 }));
+        const adminEntities = dto.companyAdmins?.map(admin => this.adminRepo.create({ companyId: saved.busCompanyId, adminId: admin.adminId, position: admin.position })) || [];
+        await this.adminRepo.save(adminEntities);
         return BusCompanyMapper.toDomain(saved);
     }
 
     async update(id: string, dto: UpdateBusCompanyDto): Promise<NullableType<BusCompany>> {
+        if (dto && dto.companyAdmins) {
+            const currentAdmins = await this.adminRepo.find({ where: { companyId: id } });
+            const currentAdminIds = currentAdmins.map(a => a.adminId);
+            const newAdminIds = dto.companyAdmins.map(a => a.adminId);
+            const adminsToAdd = dto.companyAdmins.filter(a => !currentAdminIds.includes(a.adminId));
+            const adminsToRemove = currentAdmins.filter(a => !newAdminIds.includes(a.adminId));
+            await this.adminRepo.remove(adminsToRemove);
+            const adminEntities = adminsToAdd.map(admin => this.adminRepo.create({ companyId: id, adminId: admin.adminId, position: admin.position }));
+            await this.adminRepo.save(adminEntities);
+            delete dto.companyAdmins;
+        }
         await this.repo.update(id, dto);
         return this.findById(id);
     }
 
     async remove(id: string): Promise<void> {
         await this.repo.delete(id);
-    }
-
-    // Admin management
-    async findAdminsByCompany(companyId: string): Promise<BusCompanyAdminResponseDto[]> {
-        const rows = await this.adminRepo
-            .createQueryBuilder('companyAdmin')
-            .leftJoin(AdminEntity, 'admin', 'admin.adminId = companyAdmin.adminId')
-            .where('companyAdmin.companyId = :companyId', { companyId })
-            .select([
-                'companyAdmin.adminId AS "adminId"',
-                'companyAdmin.companyId AS "companyId"',
-                'companyAdmin.position AS "position"',
-                'companyAdmin.createdAt AS "createdAt"',
-                'admin.fullName AS "fullName"',
-                'admin.username AS "username"',
-                'admin.avatarUrl AS "avatarUrl"',
-                'admin.isActive AS "isActive"',
-            ])
-            .orderBy('companyAdmin.createdAt', 'DESC')
-            .getRawMany<BusCompanyAdminResponseDto>();
-
-        return rows;
     }
 
     async findSystemAdminById(adminId: string): Promise<NullableType<AdminEntity>> {

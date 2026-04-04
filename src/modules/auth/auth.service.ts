@@ -67,7 +67,8 @@ export class AuthService {
         adminId: admin.adminId,
         username: admin.username,
         fullName: admin.fullName,
-        permissions: admin.permissions
+        permissions: admin.permissions,
+        role: admin.role
       },
     };
   }
@@ -153,7 +154,8 @@ export class AuthService {
             adminId: admin.adminId,
             username: admin.username,
             fullName: admin.fullName,
-            permissions: admin.permissions
+            permissions: admin.permissions,
+            role: admin.role
           },
         }
       }

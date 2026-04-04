@@ -9,6 +9,13 @@ export class BusCompany {
     @Allow() phone?: string;
     @Allow() serviceFee: number;
     @Allow() logoUrl?: string;
+    @Allow() publicId?: string;
+    @Allow() companyAdmins?: {
+        adminId: string;
+        position: string;
+        username: string;
+        fullName: string;
+    }[]
     @Allow() status: BusCompanyStatus;
     @Allow() createdAt: Date;
 }

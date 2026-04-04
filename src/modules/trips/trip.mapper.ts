@@ -1,7 +1,6 @@
 import { Trip, TripStop } from './trip.domain';
 import { TripEntity } from './entities/trip.entity';
-import { TripPickupPointEntity } from './entities/trip-pickup-point.entity';
-import { TripDropoffPointEntity } from './entities/trip-dropoff-point.entity';
+import { TripStopEntity } from './entities/trip-stop.entity';
 
 export class TripMapper {
     static toDomain(raw: TripEntity): Trip {
@@ -20,30 +19,25 @@ export class TripMapper {
         domain.isPublished = raw.isPublished;
         domain.cancelReason = raw.cancelReason;
         domain.createdAt = raw.createdAt;
+        if (raw.tripStops?.length) {
+            domain.tripStops = raw.tripStops.map(TripMapper.stopToDomain);
+        }
         return domain;
     }
 
-    static pickupToDomain(raw: TripPickupPointEntity): TripStop {
+    static stopToDomain(raw: TripStopEntity): TripStop {
         return {
             id: raw.id,
-            locationId: raw.locationId,
-            locationName: raw.location?.name,
-            locationAddress: raw.location?.address,
-            time: raw.pickupTime,
+            stopId: raw.id,
+            routeStopId: raw.routeStopId,
+            locationId: raw.stop?.locationId,
+            locationName: raw.stop?.location?.name,
+            locationAddress: raw.stop?.location?.address,
+            stopType: raw.stopType,
+            pickupTime: raw.pickupTime,
+            dropoffTime: raw.dropoffTime,
             note: raw.note,
-            sortOrder: raw.sortOrder,
-        };
-    }
-
-    static dropoffToDomain(raw: TripDropoffPointEntity): TripStop {
-        return {
-            id: raw.id,
-            locationId: raw.locationId,
-            locationName: raw.location?.name,
-            locationAddress: raw.location?.address,
-            time: raw.dropoffTime,
-            note: raw.note,
-            sortOrder: raw.sortOrder,
+            sortOrder: raw.stopOrder,
         };
     }
 }

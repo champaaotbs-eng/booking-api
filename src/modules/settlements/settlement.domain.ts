@@ -10,5 +10,6 @@ export class Settlement {
     @Allow() totalCommission: number;
     @Allow() totalNet: number;
     @Allow() status: SettlementStatus;
+    @Allow() evidence?: string;
     @Allow() createdAt: Date;
 }

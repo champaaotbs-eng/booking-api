@@ -2,42 +2,49 @@ import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, Pri
 import { BusCompanyEntity } from '@/modules/bus-companies/entities/bus-company.entity';
 
 export enum BusType {
+    SEAT = 'SEAT',
     SLEEPER = 'SLEEPER',
-    SEATER = 'SEATER',
     LIMOUSINE = 'LIMOUSINE',
-    DOUBLE_DECKER = 'DOUBLE_DECKER',
 }
 
 @Entity('buses')
 export class BusEntity {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+    @PrimaryGeneratedColumn('uuid', { name: 'bus_id' })
+    busId: string;
 
     @ManyToOne(() => BusCompanyEntity, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'busCompanyId' })
+    @JoinColumn({ name: 'company_id', referencedColumnName: 'busCompanyId' })
     company: BusCompanyEntity;
 
-    @Column()
-    companyId: string;
+    @Column({ name: 'company_id' })
+    busCompanyId: string;
 
-    @Column({ type: 'enum', enum: BusType })
+    @Column({ name: 'bus_type', type: 'enum', enum: BusType })
     busType: BusType;
 
-    @Column({ length: 50 })
+    @Column({ name: 'bus_code', length: 50, nullable: true })
     busCode: string;
 
-    @Column({ length: 100 })
+    @Column({ name: 'bus_name', length: 100, nullable: true })
     busName: string;
 
-    @Column({ nullable: true })
+    @Column({ name: 'description', nullable: true })
     description?: string;
 
-    @Column({ nullable: true })
+    @Column({ name: 'license_plate', nullable: true })
     licensePlate?: string;
 
-    @CreateDateColumn({ type: 'timestamptz' })
+    @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
     createdAt: Date;
 
-    @UpdateDateColumn({ type: 'timestamptz' })
+    @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
     updatedAt: Date;
+
+    get id(): string {
+        return this.busId;
+    }
+
+    get companyId(): string {
+        return this.busCompanyId;
+    }
 }

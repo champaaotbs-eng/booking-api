@@ -27,9 +27,6 @@ export class CreateAdminDto {
     @IsNotEmpty()
     isActive: boolean;
 
-    @IsNotEmpty()
-    type: ADMIN_TYPE;
-
     @IsOptional()
     @IsUUID()
     roleId?: string;

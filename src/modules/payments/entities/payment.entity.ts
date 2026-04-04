@@ -14,17 +14,17 @@ export enum PaymentType {
 }
 
 export enum PaymentProvider {
-    VNPAY = 'VNPAY',
-    MOMO = 'MOMO',
-    STRIPE = 'STRIPE',
+    VNPAY = 'vnpay',
+    MOMO = 'momo',
+    STRIPE = 'stripe',
 }
 
 export enum PaymentMethod {
-    QR = 'QR',
-    ATM = 'ATM',
-    CREDIT_CARD = 'CREDIT_CARD',
-    CASH = 'CASH',
-    POS = 'POS',
+    QR = 'qr',
+    ATM = 'atm',
+    CREDIT_CARD = 'credit_card',
+    CASH = 'cash',
+    POS = 'pos',
 }
 
 export enum PaymentStatus {
@@ -37,43 +37,47 @@ export enum PaymentStatus {
 
 @Entity('payments')
 export class PaymentEntity {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+    @PrimaryGeneratedColumn('uuid', { name: 'payment_id' })
+    paymentId: string;
 
     @ManyToOne(() => BookingEntity, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'bookingId' })
+    @JoinColumn({ name: 'booking_id', referencedColumnName: 'bookingId' })
     booking: BookingEntity;
 
-    @Column()
+    @Column({ name: 'booking_id' })
     bookingId: string;
 
-    @Column({ type: 'enum', enum: PaymentType })
+    @Column({ name: 'payment_type', type: 'enum', enum: PaymentType })
     paymentType: PaymentType;
 
-    @Column({ type: 'enum', enum: PaymentProvider, nullable: true })
+    @Column({ name: 'provider', type: 'enum', enum: PaymentProvider, nullable: true })
     provider?: PaymentProvider;
 
-    @Column({ type: 'enum', enum: PaymentMethod, nullable: true })
+    @Column({ name: 'method', type: 'enum', enum: PaymentMethod, nullable: true })
     method?: PaymentMethod;
 
-    @Column({ nullable: true })
+    @Column({ name: 'evidence', nullable: true })
     evidence?: string;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
+    @Column({ name: 'amount', type: 'decimal', precision: 10, scale: 2, nullable: true })
     amount: number;
 
-    @Column({ default: PaymentStatus.PENDING })
+    @Column({ name: 'status', default: PaymentStatus.PENDING })
     status: PaymentStatus;
 
-    @Column({ nullable: true })
+    @Column({ name: 'transaction_code', nullable: true })
     transactionCode?: string;
 
     @Column({ type: 'jsonb', nullable: true })
     gatewayResponse?: Record<string, unknown>;
 
-    @CreateDateColumn({ type: 'timestamptz' })
+    @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
     createdAt: Date;
 
-    @Column({ type: 'timestamptz', nullable: true })
+    @Column({ name: 'completed_at', type: 'timestamptz', nullable: true })
     completedAt?: Date;
+
+    get id(): string {
+        return this.paymentId;
+    }
 }

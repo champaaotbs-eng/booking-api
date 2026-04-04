@@ -25,38 +25,42 @@ export enum PaymentMethod {
 
 @Entity('bookings')
 export class BookingEntity {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+    @PrimaryGeneratedColumn('uuid', { name: 'booking_id' })
+    bookingId: string;
 
-    @Column({ unique: true })
+    @Column({ name: 'booking_code', unique: true, nullable: true })
     bookingCode: string;
 
     @ManyToOne(() => UserEntity, { onDelete: 'RESTRICT' })
-    @JoinColumn({ name: 'userId' })
+    @JoinColumn({ name: 'user_id', referencedColumnName: 'userId' })
     user: UserEntity;
 
-    @Column()
+    @Column({ name: 'user_id', nullable: true })
     userId: string;
 
     @ManyToOne(() => TripEntity, { onDelete: 'RESTRICT' })
-    @JoinColumn({ name: 'tripId' })
+    @JoinColumn({ name: 'trip_id', referencedColumnName: 'tripId' })
     trip: TripEntity;
 
-    @Column()
+    @Column({ name: 'trip_id' })
     tripId: string;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
+    @Column({ name: 'total_amount', type: 'decimal', precision: 10, scale: 2, nullable: true })
     totalAmount: number;
 
-    @Column({ type: 'enum', enum: PaymentMethod })
+    @Column({ name: 'payment_method', type: 'enum', enum: PaymentMethod, nullable: true })
     paymentMethod: PaymentMethod;
 
-    @Column({ default: BookingStatus.PENDING_PAYMENT })
+    @Column({ name: 'status', default: BookingStatus.PENDING_PAYMENT })
     status: BookingStatus;
 
-    @Column({ type: 'timestamptz', nullable: true })
+    @Column({ name: 'expires_at', type: 'timestamptz', nullable: true })
     expiresAt?: Date;
 
-    @CreateDateColumn({ type: 'timestamptz' })
+    @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
     createdAt: Date;
+
+    get id(): string {
+        return this.bookingId;
+    }
 }

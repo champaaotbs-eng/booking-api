@@ -1,59 +1,59 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, FindOptionsWhere, In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { TripEntity, TripStatus } from './entities/trip.entity';
-import { TripPickupPointEntity } from './entities/trip-pickup-point.entity';
-import { TripDropoffPointEntity } from './entities/trip-dropoff-point.entity';
+import { TripStopEntity } from './entities/trip-stop.entity';
 import { TripMapper } from './trip.mapper';
-import { Trip, TripStop } from './trip.domain';
+import { Trip } from './trip.domain';
 import { FilterTripDto, SortTripDto } from './dto/query-trip.dto';
-import { CreateTripDto, UpdateTripDto } from './dto/trip.dto';
+import { CreateTripDto, PatchTripStopsDto, UpdateTripDto } from './dto/trip.dto';
 import { IPaginationOptions } from '@/utils/types/pagination-options';
 import { PaginationResponseDto } from '@/utils/types/pagination-response.dto';
 import { NullableType } from '@/utils/types/nullable.type';
+import { BookingSeatEntity } from '@/modules/bookings/entities/booking-seat.entity';
+import { BookingStatus } from '@/modules/bookings/entities/booking.entity';
+import { RouteStopType } from '@/modules/route-stops/entities/route-stop.entity';
+
+type TripStopSeed = {
+    stopId: string;
+    stopOrder: number;
+    stopType: RouteStopType;
+    pickupTime?: Date;
+    dropoffTime?: Date;
+    note?: string;
+};
+
+const ACTIVE_BOOKING_STATUSES = [
+    BookingStatus.PENDING_PAYMENT,
+    BookingStatus.RESERVED,
+    BookingStatus.CONFIRMED,
+    BookingStatus.COMPLETED,
+];
 
 @Injectable()
 export class TripsRepository {
     constructor(
         @InjectRepository(TripEntity)
         private readonly tripRepo: Repository<TripEntity>,
-        @InjectRepository(TripPickupPointEntity)
-        private readonly pickupRepo: Repository<TripPickupPointEntity>,
-        @InjectRepository(TripDropoffPointEntity)
-        private readonly dropoffRepo: Repository<TripDropoffPointEntity>,
+        @InjectRepository(TripStopEntity)
+        private readonly tripStopRepo: Repository<TripStopEntity>,
+        @InjectRepository(BookingSeatEntity)
+        private readonly bookingSeatRepo: Repository<BookingSeatEntity>,
     ) { }
 
-    async findManyWithPagination({
-        filterOptions,
-        sortOptions,
-        paginationOptions,
-    }: {
-        filterOptions?: FilterTripDto | null;
-        sortOptions?: SortTripDto[] | null;
-        paginationOptions: IPaginationOptions;
-    }): Promise<PaginationResponseDto<Trip>> {
-        const qb = this.tripRepo
-            .createQueryBuilder('trip')
-            .leftJoinAndSelect('trip.route', 'route')
-            .leftJoinAndSelect('route.fromLocation', 'fromLocation')
-            .leftJoinAndSelect('route.toLocation', 'toLocation')
-            .leftJoinAndSelect('fromLocation.province', 'fromProvince')
-            .leftJoinAndSelect('toLocation.province', 'toProvince')
-            .leftJoinAndSelect('trip.busCompany', 'busCompany')
-            .where('trip.isPublished = TRUE');
-
+    private applyFilters(qb: any, filterOptions?: FilterTripDto | null, isPublic = false) {
         if (filterOptions?.routeId) {
             qb.andWhere('trip.routeId = :routeId', { routeId: filterOptions.routeId });
         }
         if (filterOptions?.busCompanyId) {
-            qb.andWhere('trip.busCompanyId = :busCompanyId', { busCompanyId: filterOptions.busCompanyId });
+            qb.andWhere('trip.busCompanyId = :busCompanyId', {
+                busCompanyId: filterOptions.busCompanyId,
+            });
         }
         if (filterOptions?.status) {
             qb.andWhere('trip.status = :status', { status: filterOptions.status });
-        } else {
-            qb.andWhere('trip.status IN (:...statuses)', {
-                statuses: [TripStatus.SCHEDULED, TripStatus.ACTIVE],
-            });
+        } else if (isPublic) {
+            qb.andWhere('trip.status = :status', { status: TripStatus.SCHEDULED });
         }
         if (filterOptions?.departureDate) {
             const date = new Date(filterOptions.departureDate);
@@ -64,12 +64,42 @@ export class TripsRepository {
                 to: nextDay,
             });
         }
-        if (filterOptions?.fromProvinceId) {
-            qb.andWhere('fromProvince.id = :fromProvinceId', { fromProvinceId: filterOptions.fromProvinceId });
+        if (filterOptions?.fromLocationId) {
+            qb.andWhere('route.fromLocationId = :fromLocationId', {
+                fromLocationId: filterOptions.fromLocationId,
+            });
         }
-        if (filterOptions?.toProvinceId) {
-            qb.andWhere('toProvince.id = :toProvinceId', { toProvinceId: filterOptions.toProvinceId });
+        if (filterOptions?.toLocationId) {
+            qb.andWhere('route.toLocationId = :toLocationId', {
+                toLocationId: filterOptions.toLocationId,
+            });
         }
+        if (isPublic) {
+            qb.andWhere('trip.isPublished = TRUE');
+        } else if (filterOptions?.isPublished !== undefined) {
+            qb.andWhere('trip.isPublished = :isPublished', {
+                isPublished: filterOptions.isPublished,
+            });
+        }
+    }
+
+    private async paginate(
+        filterOptions: FilterTripDto | null | undefined,
+        sortOptions: SortTripDto[] | null | undefined,
+        paginationOptions: IPaginationOptions,
+        isPublic = false,
+    ): Promise<PaginationResponseDto<Trip>> {
+        const qb = this.tripRepo
+            .createQueryBuilder('trip')
+            .leftJoinAndSelect('trip.route', 'route')
+            .leftJoinAndSelect('route.fromLocation', 'fromLocation')
+            .leftJoinAndSelect('route.toLocation', 'toLocation')
+            .leftJoinAndSelect('trip.busCompany', 'busCompany')
+            .leftJoinAndSelect('trip.tripStops', 'tripStops')
+            .leftJoinAndSelect('tripStops.stop', 'routeStop')
+            .leftJoinAndSelect('routeStop.location', 'stopLocation');
+
+        this.applyFilters(qb, filterOptions, isPublic);
 
         if (sortOptions?.length) {
             sortOptions.forEach((s) => qb.addOrderBy(`trip.${s.orderBy}`, s.order));
@@ -94,92 +124,133 @@ export class TripsRepository {
         };
     }
 
-    async findById(id: string): Promise<NullableType<Trip & { pickupPoints: TripStop[]; dropoffPoints: TripStop[] }>> {
-        const entity = await this.tripRepo.findOne({
-            where: { id },
-            relations: ['route', 'route.fromLocation', 'route.toLocation', 'busCompany'],
-        });
-        if (!entity) return null;
-
-        const pickups = await this.pickupRepo.find({
-            where: { tripId: id },
-            relations: ['location'],
-            order: { sortOrder: 'ASC' },
-        });
-        const dropoffs = await this.dropoffRepo.find({
-            where: { tripId: id },
-            relations: ['location'],
-            order: { sortOrder: 'ASC' },
-        });
-
-        return {
-            ...TripMapper.toDomain(entity),
-            pickupPoints: pickups.map(TripMapper.pickupToDomain),
-            dropoffPoints: dropoffs.map(TripMapper.dropoffToDomain),
-        };
+    findPublicWithPagination({
+        filterOptions,
+        sortOptions,
+        paginationOptions,
+    }: {
+        filterOptions?: FilterTripDto | null;
+        sortOptions?: SortTripDto[] | null;
+        paginationOptions: IPaginationOptions;
+    }) {
+        return this.paginate(filterOptions, sortOptions, paginationOptions, true);
     }
 
-    async create(dto: CreateTripDto): Promise<Trip & { pickupPoints: TripStop[]; dropoffPoints: TripStop[] }> {
-        const { pickupPoints: pickupDtos, dropoffPoints: dropoffDtos, ...tripData } = dto;
-        const trip = this.tripRepo.create(tripData);
-        const savedTrip = await this.tripRepo.save(trip);
-
-        const pickupPoints: TripStop[] = [];
-        const dropoffPoints: TripStop[] = [];
-
-        if (pickupDtos?.length) {
-            const entities = pickupDtos.map((p, idx) =>
-                this.pickupRepo.create({
-                    tripId: savedTrip.id,
-                    locationId: p.locationId,
-                    pickupTime: p.time ? new Date(p.time) : undefined,
-                    note: p.note,
-                    sortOrder: p.sortOrder ?? idx,
-                }),
-            );
-            const saved = await this.pickupRepo.save(entities);
-            // Re-fetch with locations
-            const withLocation = await this.pickupRepo.find({
-                where: { tripId: savedTrip.id },
-                relations: ['location'],
-            });
-            pickupPoints.push(...withLocation.map(TripMapper.pickupToDomain));
-        }
-
-        if (dropoffDtos?.length) {
-            const entities = dropoffDtos.map((d, idx) =>
-                this.dropoffRepo.create({
-                    tripId: savedTrip.id,
-                    locationId: d.locationId,
-                    dropoffTime: d.time ? new Date(d.time) : undefined,
-                    note: d.note,
-                    sortOrder: d.sortOrder ?? idx,
-                }),
-            );
-            await this.dropoffRepo.save(entities);
-            const withLocation = await this.dropoffRepo.find({
-                where: { tripId: savedTrip.id },
-                relations: ['location'],
-            });
-            dropoffPoints.push(...withLocation.map(TripMapper.dropoffToDomain));
-        }
-
-        return { ...TripMapper.toDomain(savedTrip), pickupPoints, dropoffPoints };
+    findCompanyWithPagination({
+        filterOptions,
+        sortOptions,
+        paginationOptions,
+    }: {
+        filterOptions?: FilterTripDto | null;
+        sortOptions?: SortTripDto[] | null;
+        paginationOptions: IPaginationOptions;
+    }) {
+        return this.paginate(filterOptions, sortOptions, paginationOptions, false);
     }
 
-    async update(id: string, dto: UpdateTripDto): Promise<NullableType<Trip>> {
-        const { pickupPoints: _, dropoffPoints: __, ...tripData } = dto;
-        if (Object.keys(tripData).length) {
-            await this.tripRepo.update(id, tripData);
-        }
+    findAdminWithPagination({
+        filterOptions,
+        sortOptions,
+        paginationOptions,
+    }: {
+        filterOptions?: FilterTripDto | null;
+        sortOptions?: SortTripDto[] | null;
+        paginationOptions: IPaginationOptions;
+    }) {
+        return this.paginate(filterOptions, sortOptions, paginationOptions, false);
+    }
+
+    async findById(id: string): Promise<NullableType<Trip>> {
         const entity = await this.tripRepo.findOne({
-            where: { id },
-            relations: ['route', 'route.fromLocation', 'route.toLocation', 'busCompany'],
+            where: { tripId: id },
+            relations: [
+                'route',
+                'route.fromLocation',
+                'route.toLocation',
+                'busCompany',
+                'busVersion',
+                'tripStops',
+                'tripStops.stop',
+                'tripStops.stop.location',
+            ],
+            order: {
+                tripStops: {
+                    stopOrder: 'ASC',
+                },
+            },
         });
         return entity ? TripMapper.toDomain(entity) : null;
     }
 
+    async createWithStops(dto: CreateTripDto, stopSeeds: TripStopSeed[]): Promise<Trip> {
+        const trip = this.tripRepo.create({
+            ...dto,
+            departureTime: new Date(dto.departureTime),
+            arrivalTime: new Date(dto.arrivalTime),
+            isPublished: dto.isPublished ?? true,
+        });
+        const savedTrip = await this.tripRepo.save(trip);
+
+        if (stopSeeds.length) {
+            const stopEntities = stopSeeds.map((stop) =>
+                this.tripStopRepo.create({
+                    tripId: savedTrip.tripId,
+                    routeStopId: stop.stopId,
+                    stopOrder: stop.stopOrder,
+                    stopType: stop.stopType,
+                    pickupTime: stop.pickupTime,
+                    dropoffTime: stop.dropoffTime,
+                    note: stop.note,
+                }),
+            );
+            await this.tripStopRepo.save(stopEntities);
+        }
+
+        const created = await this.findById(savedTrip.tripId);
+        return created as Trip;
+    }
+
+    async update(id: string, dto: UpdateTripDto): Promise<NullableType<Trip>> {
+        await this.tripRepo.update({ tripId: id }, {
+            ...dto,
+            departureTime: dto.departureTime ? new Date(dto.departureTime) : undefined,
+            arrivalTime: dto.arrivalTime ? new Date(dto.arrivalTime) : undefined,
+        });
+        return this.findById(id);
+    }
+
+    async patchStops(id: string, dto: PatchTripStopsDto): Promise<NullableType<Trip>> {
+        for (const stop of dto.stops) {
+            await this.tripStopRepo.update(
+                { tripStopId: stop.stopId, tripId: id },
+                {
+                    stopType: stop.stopType,
+                    pickupTime: stop.pickupTime ? new Date(stop.pickupTime) : undefined,
+                    dropoffTime: stop.dropoffTime ? new Date(stop.dropoffTime) : undefined,
+                    note: stop.note,
+                    stopOrder: stop.sortOrder,
+                },
+            );
+        }
+        return this.findById(id);
+    }
+
+    async updateStatus(id: string, status: TripStatus, cancelReason?: string): Promise<void> {
+        await this.tripRepo.update({ tripId: id }, { status, cancelReason });
+    }
+
     async remove(id: string): Promise<void> {
-        await this.tripRepo.delete(id);
+        await this.tripRepo.delete({ tripId: id });
+    }
+
+    async getBookedSeatIds(tripId: string): Promise<string[]> {
+        const rows = await this.bookingSeatRepo
+            .createQueryBuilder('bs')
+            .innerJoin('bs.booking', 'b')
+            .where('b.tripId = :tripId', { tripId })
+            .andWhere('b.status IN (:...statuses)', { statuses: ACTIVE_BOOKING_STATUSES })
+            .select('bs.seatId', 'seatId')
+            .getRawMany();
+        return rows.map((row: { seatId: string }) => row.seatId);
     }
 }

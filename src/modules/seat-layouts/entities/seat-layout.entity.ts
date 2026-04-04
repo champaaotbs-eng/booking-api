@@ -3,28 +3,33 @@ import { BusCompanyEntity } from '@/modules/bus-companies/entities/bus-company.e
 
 @Entity('seat_layouts')
 export class SeatLayoutEntity {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+    @PrimaryGeneratedColumn('uuid', { name: 'seat_layout_id' })
+    seatLayoutId: string;
 
     @ManyToOne(() => BusCompanyEntity, { nullable: true, onDelete: 'SET NULL' })
-    @JoinColumn({ name: 'busCompanyId' })
+    @JoinColumn({ name: 'company_id', referencedColumnName: 'busCompanyId' })
     company?: BusCompanyEntity;
 
-    @Column({ nullable: true })
-    companyId?: string;
+    @Column({ name: 'company_id' })
+    busCompanyId?: string;
 
-    @Column({ length: 100 })
+    @Column({ name: 'name', length: 100, nullable: true })
     name: string;
 
-    @Column({ type: 'int' })
+    @Column({ name: 'rows', type: 'int', nullable: true })
     rows: number;
 
-    @Column({ type: 'int' })
+    @Column({ name: 'columns', type: 'int', nullable: true })
     columns: number;
 
-    @Column({ type: 'int', default: 1 })
-    floors: number;
-
-    @CreateDateColumn({ type: 'timestamptz' })
+    @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
     createdAt: Date;
+
+    get id(): string {
+        return this.seatLayoutId;
+    }
+
+    get companyId(): string | undefined {
+        return this.busCompanyId;
+    }
 }

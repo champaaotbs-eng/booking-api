@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 import { I18nTranslations } from '@/generated/i18n.generated';
 import { PartialType } from '@nestjs/mapped-types';
@@ -34,7 +34,7 @@ export class CreateBusDto {
 export class UpdateBusDto extends PartialType(CreateBusDto) { }
 
 export class CreateBusVersionDto {
-    @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
+    @IsOptional()
     @IsString()
     driverPhone?: string;
 
@@ -44,3 +44,9 @@ export class CreateBusVersionDto {
 }
 
 export class UpdateBusVersionDto extends PartialType(CreateBusVersionDto) { }
+
+export class AssignBusVersionLayoutDto {
+    @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
+    @IsUUID()
+    seatLayoutId: string;
+}

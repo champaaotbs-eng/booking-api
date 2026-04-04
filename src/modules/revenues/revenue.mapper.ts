@@ -7,9 +7,9 @@ export class RevenueMapper {
         domain.id = raw.id;
         domain.companyId = raw.companyId;
         domain.bookingId = raw.bookingId;
-        domain.grossAmount = raw.grossAmount;
-        domain.commission = raw.commission;
-        domain.netAmount = raw.netAmount;
+        domain.grossAmount = Number(raw.grossAmount);
+        domain.commission = Number(raw.commission);
+        domain.netAmount = Number(raw.netAmount);
         domain.paymentType = raw.paymentType;
         domain.createdAt = raw.createdAt;
         return domain;

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { LocationsRepository } from './locations.repository';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterLocationDto, SortLocationDto } from './dto/query-location.dto';
@@ -18,7 +18,7 @@ export class LocationsService {
 
     async findOne(id: string) {
         const location = await this.locationsRepository.findById(id);
-        if (!location) throw new NotFoundException('Location not found');
+        if (!location) throw new NotFoundException('location_not_found');
         return location;
     }
 
@@ -28,11 +28,30 @@ export class LocationsService {
 
     async update(id: string, dto: UpdateLocationDto) {
         await this.findOne(id);
-        return this.locationsRepository.update(id, dto);
+        try {
+            return await this.locationsRepository.update(id, dto);
+        } catch (error) {
+            if (error instanceof Error && error.message === 'location_immutable') {
+                throw new BadRequestException('location_immutable');
+            }
+            throw error;
+        }
     }
 
     async remove(id: string) {
         await this.findOne(id);
-        return this.locationsRepository.softDelete(id);
+        try {
+            return await this.locationsRepository.softDelete(id);
+        } catch (error) {
+            if (error instanceof Error && error.message === 'location_immutable') {
+                throw new BadRequestException('location_immutable');
+            }
+            throw error;
+        }
+    }
+
+    async toggleActive(id: string) {
+        await this.findOne(id);
+        return this.locationsRepository.toggleActive(id);
     }
 }

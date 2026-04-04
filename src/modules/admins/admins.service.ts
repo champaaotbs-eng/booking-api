@@ -18,6 +18,11 @@ export class AdminsService {
         });
     }
 
+    findCompanyAdmins() {
+        return this.adminsRepository.findCompanyAdmins();
+    }
+
+
     async findOne(id: string) {
         const admin = await this.adminsRepository.findById(id);
         if (!admin) throw new NotFoundException('Admin not found');

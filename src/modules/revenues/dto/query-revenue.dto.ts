@@ -5,6 +5,8 @@ export class FilterRevenueDto {
     companyId?: string;
     bookingId?: string;
     paymentType?: RevenuePaymentType;
+    fromDate?: string;
+    toDate?: string;
 }
 
 export class SortRevenueDto {

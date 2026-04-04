@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { RoutesRepository } from './routes.repository';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterRouteDto, SortRouteDto } from './dto/query-route.dto';
@@ -18,7 +18,7 @@ export class RoutesService {
 
     async findOne(id: string) {
         const route = await this.routesRepository.findById(id);
-        if (!route) throw new NotFoundException('Route not found');
+        if (!route) throw new NotFoundException('route_not_found');
         return route;
     }
 
@@ -28,11 +28,25 @@ export class RoutesService {
 
     async update(id: string, dto: UpdateRouteDto) {
         await this.findOne(id);
-        return this.routesRepository.update(id, dto);
+        try {
+            return await this.routesRepository.update(id, dto);
+        } catch (error) {
+            if (error instanceof Error && error.message === 'route_immutable') {
+                throw new BadRequestException('route_immutable');
+            }
+            throw error;
+        }
     }
 
     async remove(id: string) {
         await this.findOne(id);
-        return this.routesRepository.remove(id);
+        try {
+            return await this.routesRepository.remove(id);
+        } catch (error) {
+            if (error instanceof Error && error.message === 'route_in_use') {
+                throw new BadRequestException('route_in_use');
+            }
+            throw error;
+        }
     }
 }

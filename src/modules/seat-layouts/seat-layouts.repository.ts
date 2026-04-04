@@ -22,6 +22,13 @@ export class SeatLayoutsRepository {
         private readonly bvlRepo: Repository<BusVersionLayoutEntity>,
     ) { }
 
+    private async ensureLayoutMutable(layoutId: string): Promise<void> {
+        const assignedCount = await this.bvlRepo.count({ where: { seatLayoutId: layoutId } });
+        if (assignedCount > 0) {
+            throw new Error('seat_layout_in_use');
+        }
+    }
+
     async findManyWithPagination({
         filterOptions,
         paginationOptions,
@@ -31,7 +38,7 @@ export class SeatLayoutsRepository {
     }): Promise<PaginationResponseDto<SeatLayout>> {
         const where: FindOptionsWhere<SeatLayoutEntity> = {};
         if (filterOptions?.name) where.name = ILike(`%${filterOptions.name}%`);
-        if (filterOptions?.companyId) where.companyId = filterOptions.companyId;
+        if (filterOptions?.companyId) where.busCompanyId = filterOptions.companyId;
 
         const [entities, total] = await this.layoutRepo.findAndCount({
             skip: (paginationOptions.page - 1) * paginationOptions.limit,
@@ -51,7 +58,7 @@ export class SeatLayoutsRepository {
     }
 
     async findById(id: string): Promise<NullableType<SeatLayout & { seats: Seat[] }>> {
-        const entity = await this.layoutRepo.findOne({ where: { id } });
+        const entity = await this.layoutRepo.findOne({ where: { seatLayoutId: id } });
         if (!entity) return null;
         const seats = await this.seatRepo.find({ where: { layoutId: id } });
         return {
@@ -62,13 +69,13 @@ export class SeatLayoutsRepository {
 
     async create(dto: CreateSeatLayoutDto): Promise<SeatLayout & { seats: Seat[] }> {
         const { seats: seatDtos, ...layoutData } = dto;
-        const layout = this.layoutRepo.create({ ...layoutData, floors: layoutData.floors ?? 1 });
+        const layout = this.layoutRepo.create(layoutData);
         const savedLayout = await this.layoutRepo.save(layout);
 
         const seats: Seat[] = [];
         if (seatDtos?.length) {
             const seatEntities = seatDtos.map((s) =>
-                this.seatRepo.create({ ...s, layoutId: savedLayout.id, extraPrice: s.extraPrice ?? 0 }),
+                this.seatRepo.create({ ...s, layoutId: savedLayout.id, price: s.price ?? 0 }),
             );
             const savedSeats = await this.seatRepo.save(seatEntities);
             seats.push(...savedSeats.map(SeatMapper.toDomain));
@@ -79,29 +86,53 @@ export class SeatLayoutsRepository {
 
     async update(id: string, dto: UpdateSeatLayoutDto): Promise<NullableType<SeatLayout>> {
         const { seats: _, ...layoutData } = dto;
-        if (Object.keys(layoutData).length) await this.layoutRepo.update(id, layoutData);
-        const entity = await this.layoutRepo.findOne({ where: { id } });
+        if (Object.keys(layoutData).length) {
+            await this.ensureLayoutMutable(id);
+            await this.layoutRepo.update({ seatLayoutId: id }, layoutData);
+        }
+        const entity = await this.layoutRepo.findOne({ where: { seatLayoutId: id } });
         return entity ? SeatLayoutMapper.toDomain(entity) : null;
     }
 
     async addSeat(layoutId: string, dto: CreateSeatDto): Promise<Seat> {
-        const entity = this.seatRepo.create({ ...dto, layoutId, extraPrice: dto.extraPrice ?? 0 });
+        await this.ensureLayoutMutable(layoutId);
+        const entity = this.seatRepo.create({ ...dto, layoutId, price: dto.price ?? 0 });
         const saved = await this.seatRepo.save(entity);
         return SeatMapper.toDomain(saved);
     }
 
-    async updateSeat(seatId: string, dto: UpdateSeatDto): Promise<NullableType<Seat>> {
-        await this.seatRepo.update(seatId, dto);
-        const entity = await this.seatRepo.findOne({ where: { id: seatId } });
+    async updateSeat(layoutId: string, seatId: string, dto: UpdateSeatDto): Promise<NullableType<Seat>> {
+        await this.ensureLayoutMutable(layoutId);
+        await this.seatRepo.update({ seatId, layoutId }, dto);
+        const entity = await this.seatRepo.findOne({ where: { seatId, layoutId } });
         return entity ? SeatMapper.toDomain(entity) : null;
     }
 
-    async removeSeat(seatId: string): Promise<void> {
-        await this.seatRepo.delete(seatId);
+    async removeSeat(layoutId: string, seatId: string): Promise<void> {
+        await this.ensureLayoutMutable(layoutId);
+        await this.seatRepo.delete({ seatId, layoutId });
+    }
+
+    async replaceSeats(layoutId: string, seatDtos: CreateSeatDto[]): Promise<Seat[]> {
+        await this.ensureLayoutMutable(layoutId);
+        await this.seatRepo.delete({ layoutId });
+
+        if (!seatDtos.length) return [];
+
+        const entities = seatDtos.map((seat) =>
+            this.seatRepo.create({
+                ...seat,
+                layoutId,
+                price: seat.price ?? 0,
+            }),
+        );
+        const savedSeats = await this.seatRepo.save(entities);
+        return savedSeats.map(SeatMapper.toDomain);
     }
 
     async remove(id: string): Promise<void> {
-        await this.layoutRepo.delete(id);
+        await this.ensureLayoutMutable(id);
+        await this.layoutRepo.delete({ seatLayoutId: id });
     }
 
     async assignLayoutToVersion(busVersionId: string, seatLayoutId: string): Promise<void> {

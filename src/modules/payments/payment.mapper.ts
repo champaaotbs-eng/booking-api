@@ -10,7 +10,7 @@ export class PaymentMapper {
         domain.provider = raw.provider;
         domain.method = raw.method;
         domain.evidence = raw.evidence;
-        domain.amount = raw.amount;
+        domain.amount = Number(raw.amount);
         domain.status = raw.status;
         domain.transactionCode = raw.transactionCode;
         domain.gatewayResponse = raw.gatewayResponse;

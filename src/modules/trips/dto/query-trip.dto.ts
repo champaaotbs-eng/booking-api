@@ -7,8 +7,9 @@ export class FilterTripDto {
     status?: TripStatus;
     /** ISO date string — filter trips departing on this date */
     departureDate?: string;
-    fromProvinceId?: string;
-    toProvinceId?: string;
+    fromLocationId?: string;
+    toLocationId?: string;
+    isPublished?: boolean;
 }
 
 export class SortTripDto {

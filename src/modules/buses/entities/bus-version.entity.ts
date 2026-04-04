@@ -3,31 +3,35 @@ import { BusEntity } from './bus.entity';
 
 export enum BusVersionStatus {
     ACTIVE = 'ACTIVE',
-    INACTIVE = 'INACTIVE',
     MAINTENANCE = 'MAINTENANCE',
+    RETIRED = 'RETIRED',
 }
 
 @Entity('bus_versions')
 export class BusVersionEntity {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+    @PrimaryGeneratedColumn('uuid', { name: 'bus_version_id' })
+    busVersionId: string;
 
     @ManyToOne(() => BusEntity, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'busId' })
+    @JoinColumn({ name: 'bus_id', referencedColumnName: 'busId' })
     bus: BusEntity;
 
-    @Column()
+    @Column({ name: 'bus_id' })
     busId: string;
 
-    @Column({ type: 'int' })
+    @Column({ name: 'version_no', type: 'int', nullable: true })
     versionNo: number;
 
-    @Column({ nullable: true })
+    @Column({ name: 'driver_phone', nullable: true })
     driverPhone?: string;
 
-    @Column({ default: BusVersionStatus.ACTIVE })
+    @Column({ name: 'status', type: 'enum', enum: BusVersionStatus, default: BusVersionStatus.ACTIVE })
     status: BusVersionStatus;
 
-    @CreateDateColumn({ type: 'timestamptz' })
+    @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
     createdAt: Date;
+
+    get id(): string {
+        return this.busVersionId;
+    }
 }
