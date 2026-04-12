@@ -6,8 +6,6 @@ import {
     PrimaryGeneratedColumn,
 } from 'typeorm';
 import { RouteEntity } from '@/modules/routes/entities/route.entity';
-import { LocationEntity } from '@/modules/locations/entities/location.entity';
-import { BusCompanyEntity } from '@/modules/bus-companies/entities/bus-company.entity';
 
 export enum RouteStopType {
     PICKUP = 'PICKUP',
@@ -27,17 +25,6 @@ export class RouteStopEntity {
     @Column({ name: 'route_id' })
     routeId: string;
 
-    @ManyToOne(() => BusCompanyEntity, { nullable: true, onDelete: 'SET NULL' })
-    @JoinColumn({ name: 'company_id', referencedColumnName: 'busCompanyId' })
-    company?: BusCompanyEntity;
-
-    @Column({ name: 'company_id', nullable: true })
-    busCompanyId?: string;
-
-    @ManyToOne(() => LocationEntity, { onDelete: 'RESTRICT' })
-    @JoinColumn({ name: 'location_id', referencedColumnName: 'locationId' })
-    location: LocationEntity;
-
     @Column({ name: 'location_id' })
     locationId: string;
 
@@ -52,12 +39,4 @@ export class RouteStopEntity {
 
     @Column({ name: 'is_active', default: true })
     isActive: boolean;
-
-    get id(): string {
-        return this.routeStopId;
-    }
-
-    get companyId(): string | undefined {
-        return this.busCompanyId;
-    }
 }

@@ -14,13 +14,27 @@ export class ProvincesController {
         return this.provincesService.findAllProvinces(query);
     }
 
-    @Get(':provinceId/wards')
+    @Get('by-name')
+    findByName(
+        @Query('provinceName') provinceName: string,
+        @Query('wardName') wardName: string,
+    ) {
+        return this.provincesService.findByName(provinceName, wardName);
+    }
+
+    @Get(':id')
+    @Public()
+    findOne(@Param('id') id: string) {
+        return this.provincesService.findOneProvince(id);
+    }
+
+    @Get(':provinceCode/wards')
     @Public()
     findWards(
-        @Param('provinceId') provinceId: string,
+        @Param('provinceCode') provinceCode: number,
         @Query() query: QueryDto<FilterWardDto, SortWardDto>,
     ) {
-        query.filters = { ...query.filters, provinceId };
+        query.filters = { ...query.filters, code: provinceCode };
         return this.provincesService.findAllWards(query);
     }
 }

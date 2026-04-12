@@ -4,7 +4,10 @@ import { FindOptionsWhere, Repository } from 'typeorm';
 import { RouteStopEntity } from './entities/route-stop.entity';
 import { RouteStopMapper } from './route-stop.mapper';
 import { RouteStop } from './route-stop.domain';
+import { FilterRouteStopDto, SortRouteStopDto } from './dto/query-route-stop.dto';
 import { CreateRouteStopDto, UpdateRouteStopDto } from './dto/route-stop.dto';
+import { IPaginationOptions } from '@/utils/types/pagination-options';
+import { PaginationResponseDto } from '@/utils/types/pagination-response.dto';
 import { NullableType } from '@/utils/types/nullable.type';
 
 @Injectable()
@@ -22,21 +25,38 @@ export class RouteStopsRepository {
         return Number(rows?.[0]?.total ?? 0) > 0;
     }
 
-    async findByRouteId(routeId: string, companyId?: string, includeInactive = false): Promise<RouteStop[]> {
-        const where: FindOptionsWhere<RouteStopEntity> = { routeId };
-        if (companyId !== undefined) {
-            where.busCompanyId = companyId;
-        }
-        if (!includeInactive) {
-            where.isActive = true;
-        }
+    async findManyWithPagination({
+        filterOptions,
+        sortOptions,
+        paginationOptions,
+    }: {
+        filterOptions?: FilterRouteStopDto | null;
+        sortOptions?: SortRouteStopDto[] | null;
+        paginationOptions: IPaginationOptions;
+    }): Promise<PaginationResponseDto<RouteStop>> {
+        const where: FindOptionsWhere<RouteStopEntity> = {};
+        if (filterOptions?.routeId) where.routeId = filterOptions.routeId;
+        if (filterOptions?.locationId) where.locationId = filterOptions.locationId;
+        if (filterOptions?.stopType) where.stopType = filterOptions.stopType;
+        if (filterOptions?.isActive !== undefined) where.isActive = filterOptions.isActive;
 
-        const entities = await this.repo.find({
+        const [entities, total] = await this.repo.findAndCount({
+            skip: (paginationOptions.page - 1) * paginationOptions.limit,
+            take: paginationOptions.limit,
             where,
             relations: ['location'],
-            order: { stopOrder: 'ASC' },
+            order: sortOptions?.reduce((acc, s) => ({ ...acc, [s.orderBy]: s.order }), {}),
         });
-        return entities.map(RouteStopMapper.toDomain);
+
+        return {
+            meta: {
+                page: paginationOptions.page,
+                limit: paginationOptions.limit,
+                totalPages: Math.ceil(total / paginationOptions.limit),
+                totalItems: total,
+            },
+            result: entities.map(RouteStopMapper.toDomain),
+        };
     }
 
     async findById(id: string): Promise<NullableType<RouteStop>> {
@@ -51,10 +71,9 @@ export class RouteStopsRepository {
         return this.repo.findOne({ where: { routeStopId: id } });
     }
 
-    async create(routeId: string, dto: CreateRouteStopDto): Promise<RouteStop> {
+    async create(dto: CreateRouteStopDto): Promise<RouteStop> {
         const entity = this.repo.create({
-            routeId,
-            busCompanyId: dto.companyId,
+            routeId: dto.routeId,
             locationId: dto.locationId,
             stopOrder: dto.stopOrder,
             stopType: dto.stopType,
@@ -75,18 +94,6 @@ export class RouteStopsRepository {
             throw new Error('route_stop_immutable');
         }
         await this.repo.update({ routeStopId: id }, dto);
-        return this.findById(id);
-    }
-
-    async toggleActive(id: string): Promise<NullableType<RouteStop>> {
-        const hasReferences = await this.hasTripReferences(id);
-        if (hasReferences) {
-            throw new Error('route_stop_immutable');
-        }
-        const entity = await this.repo.findOne({ where: { routeStopId: id } });
-        if (!entity) return null;
-        entity.isActive = !entity.isActive;
-        await this.repo.save(entity);
         return this.findById(id);
     }
 
@@ -115,11 +122,6 @@ export class RouteStopsRepository {
             if (!existing) {
                 dedup.set(key, stop);
                 continue;
-            }
-            const existingDefault = !existing.companyId;
-            const currentSpecific = !!stop.busCompanyId;
-            if (existingDefault && currentSpecific) {
-                dedup.set(key, stop);
             }
         }
 

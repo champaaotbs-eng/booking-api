@@ -1,23 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, ILike, Repository } from 'typeorm';
-import { LocationEntity } from './entities/location.entity';
-import { LocationMapper } from './location.mapper';
-import { Location } from './location.domain';
-import { FilterLocationDto, SortLocationDto } from './dto/query-location.dto';
-import { CreateLocationDto, UpdateLocationDto } from './dto/location.dto';
+import { StationMapper } from './stations.mapper';
+import { Station } from './stations.domain';
 import { IPaginationOptions } from '@/utils/types/pagination-options';
 import { PaginationResponseDto } from '@/utils/types/pagination-response.dto';
 import { NullableType } from '@/utils/types/nullable.type';
+import { FilterStationDto, SortStationDto } from './dto/query-station.dto';
+import { CreateStationDto, UpdateStationDto } from './dto/station.dto';
+import { StationEntity } from './entities/stations.entity';
 
 @Injectable()
-export class LocationsRepository {
+export class StationsRepository {
     constructor(
-        @InjectRepository(LocationEntity)
-        private readonly repo: Repository<LocationEntity>,
+        @InjectRepository(StationEntity)
+        private readonly repo: Repository<StationEntity>,
     ) { }
 
-    private async hasReferences(locationId: string): Promise<boolean> {
+    private async hasReferences(stationId: string): Promise<boolean> {
         const routeRows = await this.repo.query(
             `
             SELECT COUNT(*)::int AS total
@@ -25,7 +25,7 @@ export class LocationsRepository {
             WHERE (from_location_id = $1 OR to_location_id = $1)
               AND deleted_at IS NULL
             `,
-            [locationId],
+            [stationId],
         );
         const stopRows = await this.repo.query(
             `
@@ -33,7 +33,7 @@ export class LocationsRepository {
             FROM route_stops
             WHERE location_id = $1
             `,
-            [locationId],
+            [stationId],
         );
         const routeTotal = Number(routeRows?.[0]?.total ?? 0);
         const stopTotal = Number(stopRows?.[0]?.total ?? 0);
@@ -45,20 +45,19 @@ export class LocationsRepository {
         sortOptions,
         paginationOptions,
     }: {
-        filterOptions?: FilterLocationDto | null;
-        sortOptions?: SortLocationDto[] | null;
+        filterOptions?: FilterStationDto | null;
+        sortOptions?: SortStationDto[] | null;
         paginationOptions: IPaginationOptions;
-    }): Promise<PaginationResponseDto<Location>> {
-        const where: FindOptionsWhere<LocationEntity> = {};
-        if (filterOptions?.name) where.name = ILike(`%${filterOptions.name}%`);
-        if (filterOptions?.provinceId) where.provinceId = filterOptions.provinceId;
+    }): Promise<PaginationResponseDto<Station>> {
+        const where: FindOptionsWhere<StationEntity> = {};
+        if (filterOptions?.provinceCode) where.provinceCode = filterOptions.provinceCode;
+        if (filterOptions?.wardCode) where.wardCode = filterOptions.wardCode;
         if (filterOptions?.isActive !== undefined) where.isActive = filterOptions.isActive;
 
         const [entities, total] = await this.repo.findAndCount({
             skip: (paginationOptions.page - 1) * paginationOptions.limit,
             take: paginationOptions.limit,
             where,
-            relations: ['province'],
             order: sortOptions?.reduce((acc, s) => ({ ...acc, [s.orderBy]: s.order }), {}),
         });
 
@@ -69,35 +68,34 @@ export class LocationsRepository {
                 totalPages: Math.ceil(total / paginationOptions.limit),
                 totalItems: total,
             },
-            result: entities.map(LocationMapper.toDomain),
+            result: entities.map(StationMapper.toDomain),
         };
     }
 
-    async findById(id: string): Promise<NullableType<Location>> {
+    async findById(id: string): Promise<NullableType<Station>> {
         const entity = await this.repo.findOne({
-            where: { locationId: id },
-            relations: ['province', 'ward'],
+            where: { stationId: id },
         });
-        return entity ? LocationMapper.toDomain(entity) : null;
+        return entity ? StationMapper.toDomain(entity) : null;
     }
 
-    async create(dto: CreateLocationDto): Promise<Location> {
+    async create(dto: CreateStationDto): Promise<Station> {
         const entity = this.repo.create({ ...dto, isActive: dto.isActive ?? true });
         const saved = await this.repo.save(entity);
-        return LocationMapper.toDomain(saved);
+        return StationMapper.toDomain(saved);
     }
 
-    async update(id: string, dto: UpdateLocationDto): Promise<NullableType<Location>> {
+    async update(id: string, dto: UpdateStationDto): Promise<NullableType<Station>> {
         const hasReferences = await this.hasReferences(id);
         if (hasReferences) {
             throw new Error('location_immutable');
         }
-        await this.repo.update({ locationId: id }, dto);
+        await this.repo.update({ stationId: id }, dto);
         return this.findById(id);
     }
 
-    async toggleActive(id: string): Promise<NullableType<Location>> {
-        const entity = await this.repo.findOne({ where: { locationId: id } });
+    async toggleActive(id: string): Promise<NullableType<Station>> {
+        const entity = await this.repo.findOne({ where: { stationId: id } });
         if (!entity) return null;
         entity.isActive = !entity.isActive;
         await this.repo.save(entity);
@@ -109,6 +107,6 @@ export class LocationsRepository {
         if (hasReferences) {
             throw new Error('location_immutable');
         }
-        await this.repo.update({ locationId: id }, { isActive: false });
+        await this.repo.update({ stationId: id }, { isActive: false });
     }
 }

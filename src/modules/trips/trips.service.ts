@@ -84,7 +84,7 @@ export class TripsService {
         const stopSeeds = routeStops.map((stop) => {
             const shifted = new Date(departure.getTime() + stop.offsetMins * 60 * 1000);
             return {
-                stopId: stop.id,
+                stopId: stop.routeStopId,
                 stopOrder: stop.stopOrder,
                 stopType: stop.stopType,
                 pickupTime:

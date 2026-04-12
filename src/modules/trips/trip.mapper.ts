@@ -7,8 +7,6 @@ export class TripMapper {
         const domain = new Trip();
         domain.id = raw.id;
         domain.routeId = raw.routeId;
-        domain.fromLocationName = raw.route?.fromLocation?.name;
-        domain.toLocationName = raw.route?.toLocation?.name;
         domain.busVersionId = raw.busVersionId;
         domain.busCompanyId = raw.busCompanyId;
         domain.busCompanyName = raw.busCompany?.name;
@@ -31,8 +29,6 @@ export class TripMapper {
             stopId: raw.id,
             routeStopId: raw.routeStopId,
             locationId: raw.stop?.locationId,
-            locationName: raw.stop?.location?.name,
-            locationAddress: raw.stop?.location?.address,
             stopType: raw.stopType,
             pickupTime: raw.pickupTime,
             dropoffTime: raw.dropoffTime,

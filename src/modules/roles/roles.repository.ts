@@ -13,6 +13,7 @@ import { NullableType } from '@/utils/types/nullable.type'
 import { DataSource } from 'typeorm';
 import { AdminEntity } from 'modules/admins/entities/admin.entity';
 import { UserEntity } from 'modules/users/entities/user.entity';
+import { ADMIN_TYPE } from 'utils/constants';
 
 @Injectable()
 export class RolesRepository {
@@ -133,5 +134,12 @@ export class RolesRepository {
         }
 
         await this.repo.delete({ roleId: id });
+    }
+
+    async findCompanyRoles() {
+        const entities = await this.repo.find({
+            where: { type: ADMIN_TYPE.COMPANY_ADMIN },
+        });
+        return entities.map(RoleMapper.toDomain);
     }
 }

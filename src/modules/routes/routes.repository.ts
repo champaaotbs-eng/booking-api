@@ -30,7 +30,6 @@ export class RoutesRepository {
         paginationOptions: IPaginationOptions;
     }): Promise<PaginationResponseDto<Route>> {
         const where: FindOptionsWhere<RouteEntity> = {};
-        if (filterOptions?.fromLocationId) where.fromLocationId = filterOptions.fromLocationId;
         if (filterOptions?.toLocationId) where.toLocationId = filterOptions.toLocationId;
 
         const [entities, total] = await this.repo.findAndCount({

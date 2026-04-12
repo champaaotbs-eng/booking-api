@@ -21,6 +21,10 @@ export class RolesService {
         });
     }
 
+    async findCompanyRoles() {
+        return this.rolesRepository.findCompanyRoles();
+    }
+
     async create(createRoleDto: CreateRoleDto) {
         return this.rolesRepository.create(createRoleDto);
     }

@@ -31,7 +31,7 @@ export class ProvincesRepository {
     }): Promise<PaginationResponseDto<Province>> {
         const where: FindOptionsWhere<ProvinceEntity> = {};
         if (filterOptions?.name) where.name = ILike(`%${filterOptions.name}%`);
-        if (filterOptions?.code) where.code = ILike(`%${filterOptions.code}%`);
+        if (filterOptions?.code) where.code = filterOptions.code;
 
         const [entities, total] = await this.provinceRepo.findAndCount({
             skip: (paginationOptions.page - 1) * paginationOptions.limit,
@@ -52,7 +52,10 @@ export class ProvincesRepository {
     }
 
     async findProvinceById(id: string): Promise<NullableType<Province>> {
-        const entity = await this.provinceRepo.findOne({ where: { provinceId: id } });
+        const entity = await this.provinceRepo.findOne({
+            where: { provinceId: id },
+            relations: ['wards'],
+        });
         return entity ? ProvinceMapper.toDomain(entity) : null;
     }
 
@@ -82,7 +85,7 @@ export class ProvincesRepository {
     }): Promise<PaginationResponseDto<Ward>> {
         const where: FindOptionsWhere<WardEntity> = {};
         if (filterOptions?.name) where.name = ILike(`%${filterOptions.name}%`);
-        if (filterOptions?.provinceId) where.provinceId = filterOptions.provinceId;
+        if (filterOptions?.code) where.code = filterOptions.code;
 
         const [entities, total] = await this.wardRepo.findAndCount({
             skip: (paginationOptions.page - 1) * paginationOptions.limit,
@@ -120,5 +123,11 @@ export class ProvincesRepository {
 
     async removeWard(id: string): Promise<void> {
         await this.wardRepo.delete({ wardId: id });
+    }
+
+
+    async findByName(provinceName: string, wardName: string) {
+        const where: FindOptionsWhere<ProvinceEntity> = {};
+        if (provinceName) where.name = ILike(`%${provinceName}%`);
     }
 }

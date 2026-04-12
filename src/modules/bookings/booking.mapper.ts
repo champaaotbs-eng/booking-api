@@ -19,8 +19,6 @@ export class BookingMapper {
             domain.tripInfo = {
                 departureTime: raw.trip.departureTime,
                 arrivalTime: raw.trip.arrivalTime,
-                fromLocationName: raw.trip.route?.fromLocation?.name,
-                toLocationName: raw.trip.route?.toLocation?.name,
                 busCompanyName: raw.trip.busCompany?.name,
             };
         }

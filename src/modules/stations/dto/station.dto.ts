@@ -3,10 +3,10 @@ import { i18nValidationMessage } from 'nestjs-i18n';
 import { I18nTranslations } from '@/generated/i18n.generated';
 import { PartialType } from '@nestjs/mapped-types';
 
-export class CreateLocationDto {
+export class CreateStationDto {
     @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
     @IsString()
-    name: string;
+    label: string;
 
     @IsOptional()
     @IsString()
@@ -33,4 +33,4 @@ export class CreateLocationDto {
     isActive?: boolean;
 }
 
-export class UpdateLocationDto extends PartialType(CreateLocationDto) { }
+export class UpdateStationDto extends PartialType(CreateStationDto) { }

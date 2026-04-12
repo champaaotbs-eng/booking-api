@@ -2,7 +2,7 @@ import { Province, Ward } from '../province.domain';
 
 export class FilterProvinceDto {
     name?: string;
-    code?: string;
+    code?: number;
 }
 
 export class SortProvinceDto {
@@ -12,7 +12,7 @@ export class SortProvinceDto {
 
 export class FilterWardDto {
     name?: string;
-    provinceId?: string;
+    code?: number;
 }
 
 export class SortWardDto {

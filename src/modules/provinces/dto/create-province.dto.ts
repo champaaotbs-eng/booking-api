@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 import { I18nTranslations } from '@/generated/i18n.generated';
 import { PartialType } from '@nestjs/mapped-types';
@@ -10,7 +10,7 @@ export class CreateProvinceDto {
 
     @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
     @IsString()
-    code: string;
+    code: number;
 
     @IsOptional()
     @IsString()
@@ -25,8 +25,8 @@ export class CreateWardDto {
     name: string;
 
     @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
-    @IsString()
-    code: string;
+    @IsNumber()
+    code: number;
 
     @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
     @IsString()

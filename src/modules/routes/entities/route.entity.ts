@@ -1,22 +1,10 @@
 import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { LocationEntity } from '@/modules/locations/entities/location.entity';
 import { RouteStopEntity } from '@/modules/route-stops/entities/route-stop.entity';
 
 @Entity('routes')
 export class RouteEntity {
     @PrimaryGeneratedColumn('uuid', { name: 'route_id' })
     routeId: string;
-
-    @ManyToOne(() => LocationEntity, { onDelete: 'RESTRICT' })
-    @JoinColumn({ name: 'from_location_id', referencedColumnName: 'locationId' })
-    fromLocation: LocationEntity;
-
-    @Column({ name: 'from_location_id' })
-    fromLocationId: string;
-
-    @ManyToOne(() => LocationEntity, { onDelete: 'RESTRICT' })
-    @JoinColumn({ name: 'to_location_id', referencedColumnName: 'locationId' })
-    toLocation: LocationEntity;
 
     @Column({ name: 'to_location_id' })
     toLocationId: string;

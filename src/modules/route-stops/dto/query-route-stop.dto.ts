@@ -1,7 +1,9 @@
 import { RouteStop } from '../route-stop.domain';
 
 export class FilterRouteStopDto {
-    companyId?: string;
+    routeId?: string;
+    locationId?: string;
+    stopType?: RouteStop['stopType'];
     isActive?: boolean;
 }
 

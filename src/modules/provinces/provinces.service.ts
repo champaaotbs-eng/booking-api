@@ -22,6 +22,10 @@ export class ProvincesService {
         return province;
     }
 
+    async findByName(provinceName: string, wardName: string) {
+
+    }
+
     createProvince(dto: CreateProvinceDto) {
         return this.provincesRepository.createProvince(dto);
     }

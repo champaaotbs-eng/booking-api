@@ -23,6 +23,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { HttpModule } from '@nestjs/axios';
 import { FilesModule } from 'modules/files/files.module';
 import { RoleSeedModule } from './role/role-seed.module';
+import { Province } from 'modules/provinces/province.domain';
+import { ProvincesSeedModule } from './provinces/provinces-seed.module';
 
 @Module({
     imports: [
@@ -81,6 +83,7 @@ import { RoleSeedModule } from './role/role-seed.module';
         PaymentsModule,
         FilesModule,
         RoleSeedModule,
+        ProvincesSeedModule,
     ],
 })
 export class SeedModule { }

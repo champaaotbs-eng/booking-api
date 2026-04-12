@@ -34,7 +34,6 @@ import { CacheConfigService } from 'cache/cache-config.service';
 import { DataSource } from 'typeorm';
 import { UsersModule } from 'modules/users/users.module';
 import { ProvincesModule } from 'modules/provinces/provinces.module';
-import { LocationsModule } from 'modules/locations/locations.module';
 import { BusCompaniesModule } from 'modules/bus-companies/bus-companies.module';
 import { BusesModule } from 'modules/buses/buses.module';
 import { SeatLayoutsModule } from 'modules/seat-layouts/seat-layouts.module';
@@ -48,6 +47,7 @@ import { SettlementsModule } from 'modules/settlements/settlements.module';
 import { RolesModule } from 'modules/roles/roles.module';
 import { AdminsModule } from './modules/admins/admins.module';
 import { FilesModule } from 'modules/files/files.module';
+import { StationsModule } from 'modules/stations/stations.module';
 
 @Module({
   imports: [
@@ -107,12 +107,12 @@ import { FilesModule } from 'modules/files/files.module';
     AuthModule,
     UsersModule,
     ProvincesModule,
-    LocationsModule,
+    StationsModule,
     BusCompaniesModule,
     BusesModule,
     SeatLayoutsModule,
     RoutesModule,
-    RouteStopsModule,
+    // RouteStopsModule,
     TripsModule,
     BookingsModule,
     PaymentsModule,
