@@ -22,8 +22,10 @@ export class ProvincesService {
         return province;
     }
 
-    async findByName(provinceName: string, wardName: string) {
-
+    async findByName(provinceName: string, wardName?: string) {
+        const result = await this.provincesRepository.findByName(provinceName, wardName);
+        if (!result) throw new NotFoundException('province_not_found');
+        return result
     }
 
     createProvince(dto: CreateProvinceDto) {

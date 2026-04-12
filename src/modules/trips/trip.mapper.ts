@@ -28,7 +28,6 @@ export class TripMapper {
             id: raw.id,
             stopId: raw.id,
             routeStopId: raw.routeStopId,
-            locationId: raw.stop?.locationId,
             stopType: raw.stopType,
             pickupTime: raw.pickupTime,
             dropoffTime: raw.dropoffTime,

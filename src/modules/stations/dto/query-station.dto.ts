@@ -2,8 +2,8 @@ import { Station } from '../stations.domain';
 
 export class FilterStationDto {
     name?: string;
-    provinceCode?: string;
-    wardCode?: string;
+    provinceCode?: number;
+    wardCode?: number;
     isActive?: boolean;
 }
 

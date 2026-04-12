@@ -10,13 +10,11 @@ export class StationsController {
     constructor(private readonly stationsService: StationsService) { }
 
     @Get()
-    @Public()
     findAll(@Query() query: QueryDto<FilterStationDto, SortStationDto>) {
         return this.stationsService.findAll(query);
     }
 
     @Get(':id')
-    @Public()
     findOne(@Param('id') id: string) {
         return this.stationsService.findOne(id);
     }

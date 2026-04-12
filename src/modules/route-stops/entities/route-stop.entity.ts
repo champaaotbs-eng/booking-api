@@ -6,6 +6,7 @@ import {
     PrimaryGeneratedColumn,
 } from 'typeorm';
 import { RouteEntity } from '@/modules/routes/entities/route.entity';
+import { StationEntity } from 'modules/stations/entities/stations.entity';
 
 export enum RouteStopType {
     PICKUP = 'PICKUP',
@@ -25,8 +26,9 @@ export class RouteStopEntity {
     @Column({ name: 'route_id' })
     routeId: string;
 
-    @Column({ name: 'location_id' })
-    locationId: string;
+    @ManyToOne(() => StationEntity)
+    @Column({ name: 'station_id' })
+    stationId: string;
 
     @Column({ name: 'stop_order', type: 'int' })
     stopOrder: number;

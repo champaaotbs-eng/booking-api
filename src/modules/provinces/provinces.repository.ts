@@ -125,9 +125,16 @@ export class ProvincesRepository {
         await this.wardRepo.delete({ wardId: id });
     }
 
-
-    async findByName(provinceName: string, wardName: string) {
+    async findByName(provinceName: string, wardName?: string) {
         const where: FindOptionsWhere<ProvinceEntity> = {};
         if (provinceName) where.name = ILike(`%${provinceName}%`);
+        if (wardName) where.wards = { name: ILike(`%${wardName}%`) };
+        const result = await this.provinceRepo.findOne({
+            where,
+            relations: ['wards']
+        })
+
+
+        return { provinceCode: result?.code, wardCode: result.wards.find(w => w.name.toUpperCase() === wardName?.toUpperCase())?.code };
     }
 }

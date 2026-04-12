@@ -36,7 +36,6 @@ export class RouteStopsRepository {
     }): Promise<PaginationResponseDto<RouteStop>> {
         const where: FindOptionsWhere<RouteStopEntity> = {};
         if (filterOptions?.routeId) where.routeId = filterOptions.routeId;
-        if (filterOptions?.locationId) where.locationId = filterOptions.locationId;
         if (filterOptions?.stopType) where.stopType = filterOptions.stopType;
         if (filterOptions?.isActive !== undefined) where.isActive = filterOptions.isActive;
 
@@ -74,7 +73,6 @@ export class RouteStopsRepository {
     async create(dto: CreateRouteStopDto): Promise<RouteStop> {
         const entity = this.repo.create({
             routeId: dto.routeId,
-            locationId: dto.locationId,
             stopOrder: dto.stopOrder,
             stopType: dto.stopType,
             offsetMins: dto.offsetMins,
@@ -117,7 +115,7 @@ export class RouteStopsRepository {
 
         const dedup = new Map<string, RouteStopEntity>();
         for (const stop of entities) {
-            const key = `${stop.locationId}:${stop.stopType}`;
+            const key = `${stop.stationId}:${stop.stopType}`;
             const existing = dedup.get(key);
             if (!existing) {
                 dedup.set(key, stop);

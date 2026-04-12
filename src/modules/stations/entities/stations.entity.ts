@@ -12,10 +12,10 @@ export class StationEntity {
     address: string;
 
     @Column({ name: 'ward_code', nullable: true })
-    wardCode?: string;
+    wardCode?: number;
 
     @Column({ name: 'province_code', nullable: true })
-    provinceCode?: string;
+    provinceCode?: number;
 
     @Column({ name: 'latitude', type: 'decimal', precision: 10, scale: 8, nullable: false })
     latitude: number;

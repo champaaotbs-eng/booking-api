@@ -1,4 +1,4 @@
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsLatitude, IsLongitude, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 import { I18nTranslations } from '@/generated/i18n.generated';
 import { PartialType } from '@nestjs/mapped-types';
@@ -13,19 +13,19 @@ export class CreateStationDto {
     address?: string;
 
     @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
-    @IsUUID()
-    provinceId: string;
-
-    @IsOptional()
-    @IsUUID()
-    wardId?: string;
+    @IsNumber()
+    provinceCode: number;
 
     @IsOptional()
     @IsNumber()
+    wardCode?: number;
+
+    @IsOptional()
+    @IsLatitude()
     latitude?: number;
 
     @IsOptional()
-    @IsNumber()
+    @IsLongitude()
     longitude?: number;
 
     @IsOptional()

@@ -6,7 +6,6 @@ export class RouteStopMapper {
         const domain = new RouteStop();
         domain.routeStopId = raw.routeStopId;
         domain.routeId = raw.routeId;
-        domain.locationId = raw.locationId;
         domain.stopOrder = raw.stopOrder;
         domain.stopType = raw.stopType;
         domain.offsetMins = raw.offsetMins;
