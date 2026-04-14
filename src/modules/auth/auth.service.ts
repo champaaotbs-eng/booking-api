@@ -116,11 +116,9 @@ export class AuthService {
 
   async processNewToken(refreshToken: string, response: Response) {
     try {
-      console.log('Refresh token:', refreshToken);
       const payload = this.jwtService.verify(refreshToken, {
         secret: this.configService.get('jwt.jwt_refresh_secret', { infer: true })
       })
-      console.log('Decoded payload:', payload);
 
       // Handle Admin Token
       if (payload.adminId) {

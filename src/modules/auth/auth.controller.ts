@@ -36,7 +36,10 @@ export class AuthController {
   @Get('refresh')
   @Public()
   getRefreshToken(@Req() req: Request, @Res({ passthrough: true }) response: Response) {
-    const refreshToken = req.cookies?.refreshToken ?? req.cookies?.refresh_token
+    const refreshToken = req.cookies['refreshToken'];
+    if (!refreshToken) {
+      throw new BadRequestException('Refresh token is required');
+    }
     return this.authService.processNewToken(refreshToken, response)
   }
 
