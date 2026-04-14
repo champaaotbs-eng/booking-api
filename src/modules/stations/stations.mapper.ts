@@ -9,6 +9,8 @@ export class StationMapper {
         domain.address = raw.address;
         domain.wardCode = raw.wardCode;
         domain.provinceCode = raw.provinceCode;
+        domain.provinceName = raw.province?.name;
+        domain.wardName = raw.ward?.name;
         domain.latitude = raw.latitude;
         domain.longitude = raw.longitude;
         domain.isActive = raw.isActive;

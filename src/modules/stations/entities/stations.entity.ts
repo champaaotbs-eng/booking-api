@@ -1,4 +1,6 @@
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { ProvinceEntity } from 'modules/provinces/entities/province.entity';
+import { WardEntity } from 'modules/provinces/entities/ward.entity';
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('stations')
 export class StationEntity {
@@ -16,6 +18,14 @@ export class StationEntity {
 
     @Column({ name: 'province_code', nullable: true })
     provinceCode?: number;
+
+    @ManyToOne(() => ProvinceEntity, { nullable: true })
+    @JoinColumn({ name: 'province_code', referencedColumnName: 'code' })
+    province?: ProvinceEntity;
+
+    @ManyToOne(() => WardEntity, { nullable: true })
+    @JoinColumn({ name: 'ward_code', referencedColumnName: 'code' })
+    ward?: WardEntity;
 
     @Column({ name: 'latitude', type: 'decimal', precision: 10, scale: 8, nullable: false })
     latitude: number;

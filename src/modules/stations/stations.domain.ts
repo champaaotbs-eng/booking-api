@@ -7,6 +7,7 @@ export class Station {
     @Allow() wardCode?: number;
     @Allow() provinceCode: number;
     @Allow() provinceName?: string;
+    @Allow() wardName?: string;
     @Allow() latitude: number;
     @Allow() longitude: number;
     @Allow() isActive: boolean;

@@ -57,6 +57,7 @@ export class StationsRepository {
         const [entities, total] = await this.repo.findAndCount({
             skip: (paginationOptions.page - 1) * paginationOptions.limit,
             take: paginationOptions.limit,
+            relations: ['province', 'ward'],
             where,
             order: sortOptions?.reduce((acc, s) => ({ ...acc, [s.orderBy]: s.order }), {}),
         });
