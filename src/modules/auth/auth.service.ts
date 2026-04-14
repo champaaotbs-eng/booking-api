@@ -55,7 +55,9 @@ export class AuthService {
     const refreshToken = this.createRefreshToken(payload)
     response.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      maxAge: 2592000 * 1000
+      maxAge: 2592000 * 1000,
+      sameSite: 'none',
+      secure: true
     })
 
     return {
@@ -142,7 +144,9 @@ export class AuthService {
         response.clearCookie('refreshToken')
         response.cookie('refreshToken', refresh_token, {
           httpOnly: true,
-          maxAge: 2592000 * 1000
+          maxAge: 2592000 * 1000,
+          sameSite: 'none',
+          secure: true
         })
 
         return {
