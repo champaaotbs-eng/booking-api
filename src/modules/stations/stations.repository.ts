@@ -17,29 +17,6 @@ export class StationsRepository {
         private readonly repo: Repository<StationEntity>,
     ) { }
 
-    private async hasReferences(stationId: string): Promise<boolean> {
-        const routeRows = await this.repo.query(
-            `
-            SELECT COUNT(*)::int AS total
-            FROM routes
-            WHERE (from_location_id = $1 OR to_location_id = $1)
-              AND deleted_at IS NULL
-            `,
-            [stationId],
-        );
-        const stopRows = await this.repo.query(
-            `
-            SELECT COUNT(*)::int AS total
-            FROM route_stops
-            WHERE location_id = $1
-            `,
-            [stationId],
-        );
-        const routeTotal = Number(routeRows?.[0]?.total ?? 0);
-        const stopTotal = Number(stopRows?.[0]?.total ?? 0);
-        return routeTotal + stopTotal > 0;
-    }
-
     async findManyWithPagination({
         filterOptions,
         sortOptions,
@@ -87,10 +64,6 @@ export class StationsRepository {
     }
 
     async update(id: string, dto: UpdateStationDto): Promise<NullableType<Station>> {
-        const hasReferences = await this.hasReferences(id);
-        if (hasReferences) {
-            throw new Error('location_immutable');
-        }
         await this.repo.update({ stationId: id }, dto);
         return this.findById(id);
     }
@@ -104,10 +77,6 @@ export class StationsRepository {
     }
 
     async softDelete(id: string): Promise<void> {
-        const hasReferences = await this.hasReferences(id);
-        if (hasReferences) {
-            throw new Error('location_immutable');
-        }
         await this.repo.update({ stationId: id }, { isActive: false });
     }
 }
