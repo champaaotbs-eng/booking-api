@@ -9,9 +9,7 @@ COPY package*.json ./
 RUN touch .env
 
 # Install app dependencies                                                                                                                                                                                                                   
-RUN npm install --legacy-peer-deps                                                                                                                                                                                                           
-
-RUN npm i -g @nestjs/cli@10.0.3                                                                                                                                                                                                              
+RUN npm ci                                                                                                                                                                                                                                                                                                                                                                                                                  
 
 #Bundle app source                                                                                                                                                                                                                           
 COPY . .                                                                                                                                                                                                                                     
