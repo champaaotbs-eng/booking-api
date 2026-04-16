@@ -12,6 +12,9 @@ export class WardEntity {
     @Column({ name: 'code', unique: true })
     code: number;
 
+    @Column({ name: 'codename', length: 100, nullable: true })
+    codename?: string;
+
     @Column({ name: 'division_type', nullable: true })
     divisionType?: string;
 

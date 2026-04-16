@@ -10,6 +10,7 @@ import { IPaginationOptions } from '@/utils/types/pagination-options';
 import { PaginationResponseDto } from '@/utils/types/pagination-response.dto';
 import { NullableType } from '@/utils/types/nullable.type';
 import { CreateProvinceDto, CreateWardDto, UpdateProvinceDto, UpdateWardDto } from './dto/create-province.dto';
+import { toSnakeCaseNoAccent } from 'utils/format';
 
 @Injectable()
 export class ProvincesRepository {
@@ -127,14 +128,12 @@ export class ProvincesRepository {
 
     async findByName(provinceName: string, wardName?: string) {
         const where: FindOptionsWhere<ProvinceEntity> = {};
-        if (provinceName) where.name = ILike(`%${provinceName}%`);
-        if (wardName) where.wards = { name: ILike(`%${wardName}%`) };
+        if (provinceName) where.codename = ILike(`%${provinceName.toLowerCase()}%`);
+        if (wardName) where.wards = { codename: ILike(`%${wardName.toLowerCase()}%`) };
         const result = await this.provinceRepo.findOne({
             where,
             relations: ['wards']
         })
-
-
-        return { provinceCode: result?.code, wardCode: result.wards.find(w => w.name.toUpperCase() === wardName?.toUpperCase())?.code };
+        return { provinceCode: result?.code, wardCode: result?.wards.find(w => w.codename.toUpperCase().includes(wardName?.toUpperCase()))?.code };
     }
 }

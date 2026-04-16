@@ -18,7 +18,7 @@ export class ProvincesSeedService {
                 name: province.name,
                 code: province.code,
                 divisionType: province.division_type,
-
+                codename: province.codename,
             });
             return this.provinceRepository.save(provinceEntity);
         })
@@ -28,6 +28,7 @@ export class ProvincesSeedService {
                 name: ward.name,
                 code: ward.code,
                 divisionType: ward.division_type,
+                codename: ward.codename,
                 province: { code: ward.province_code } as ProvinceEntity,
             });
             return this.wardRepository.save(wardEntity);
