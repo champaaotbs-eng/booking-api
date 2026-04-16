@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { BusCompanyAdminEntity } from './bus-company-admin.entity';
+import { RouteEntity } from 'modules/routes/entities/route.entity';
 
 export enum BusCompanyStatus {
     ACTIVE = 'ACTIVE',
@@ -38,6 +39,9 @@ export class BusCompanyEntity {
 
     @OneToMany(() => BusCompanyAdminEntity, (admin) => admin.company)
     companyAdmins: BusCompanyAdminEntity[];
+
+    @OneToMany(() => RouteEntity, (route) => route.busCompany)
+    routes: RouteEntity[];
 
     @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
     createdAt: Date;

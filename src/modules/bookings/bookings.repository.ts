@@ -70,8 +70,6 @@ export class BookingsRepository {
             .createQueryBuilder('booking')
             .leftJoinAndSelect('booking.trip', 'trip')
             .leftJoinAndSelect('trip.route', 'route')
-            .leftJoinAndSelect('route.fromLocation', 'fromLocation')
-            .leftJoinAndSelect('route.toLocation', 'toLocation')
             .leftJoinAndSelect('trip.busCompany', 'busCompany');
 
         if (filterOptions?.userId) qb.andWhere('booking.userId = :userId', { userId: filterOptions.userId });
@@ -119,7 +117,7 @@ export class BookingsRepository {
     async findById(id: string): Promise<NullableType<Booking>> {
         const entity = await this.bookingRepo.findOne({
             where: { bookingId: id },
-            relations: ['trip', 'trip.route', 'trip.route.fromLocation', 'trip.route.toLocation', 'trip.busCompany'],
+            relations: ['trip', 'trip.route', 'trip.busCompany'],
         });
         if (!entity) return null;
         const seats = await this.bookingSeatRepo.find({

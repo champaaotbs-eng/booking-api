@@ -38,7 +38,6 @@ import { BusCompaniesModule } from 'modules/bus-companies/bus-companies.module';
 import { BusesModule } from 'modules/buses/buses.module';
 import { SeatLayoutsModule } from 'modules/seat-layouts/seat-layouts.module';
 import { RoutesModule } from 'modules/routes/routes.module';
-import { RouteStopsModule } from 'modules/route-stops/route-stops.module';
 import { TripsModule } from 'modules/trips/trips.module';
 import { BookingsModule } from 'modules/bookings/bookings.module';
 import { PaymentsModule } from 'modules/payments/payments.module';
@@ -112,7 +111,6 @@ import { StationsModule } from 'modules/stations/stations.module';
     BusesModule,
     SeatLayoutsModule,
     RoutesModule,
-    // RouteStopsModule,
     TripsModule,
     BookingsModule,
     PaymentsModule,

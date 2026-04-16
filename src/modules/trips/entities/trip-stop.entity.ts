@@ -6,7 +6,7 @@ import {
     PrimaryGeneratedColumn,
 } from 'typeorm';
 import { TripEntity } from './trip.entity';
-import { RouteStopEntity, RouteStopType } from '@/modules/route-stops/entities/route-stop.entity';
+import { RouteStopEntity, RouteStopType } from 'modules/routes/entities/route-stop.entity';
 
 @Entity('trip_stops')
 export class TripStopEntity {

@@ -6,7 +6,9 @@ import { CreateRouteDto, UpdateRouteDto } from './dto/route.dto';
 
 @Injectable()
 export class RoutesService {
-    constructor(private readonly routesRepository: RoutesRepository) { }
+    constructor(
+        private readonly routesRepository: RoutesRepository,
+    ) { }
 
     findAll(query: QueryDto<FilterRouteDto, SortRouteDto>) {
         return this.routesRepository.findManyWithPagination({
@@ -22,8 +24,15 @@ export class RoutesService {
         return route;
     }
 
-    create(dto: CreateRouteDto) {
-        return this.routesRepository.create(dto);
+    async create(dto: CreateRouteDto) {
+        try {
+            return await this.routesRepository.create(dto);
+        } catch (error) {
+            if (error instanceof Error && ['route_stops_required'].includes(error.message)) {
+                throw new BadRequestException(error.message);
+            }
+            throw error;
+        }
     }
 
     async update(id: string, dto: UpdateRouteDto) {
@@ -31,8 +40,8 @@ export class RoutesService {
         try {
             return await this.routesRepository.update(id, dto);
         } catch (error) {
-            if (error instanceof Error && error.message === 'route_immutable') {
-                throw new BadRequestException('route_immutable');
+            if (error instanceof Error && ['route_immutable', 'route_stops_required', 'route_stop_immutable', 'route_stop_not_found'].includes(error.message)) {
+                throw new BadRequestException(error.message);
             }
             throw error;
         }

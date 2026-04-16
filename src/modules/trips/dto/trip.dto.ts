@@ -16,7 +16,7 @@ import { i18nValidationMessage } from 'nestjs-i18n';
 import { I18nTranslations } from '@/generated/i18n.generated';
 import { PartialType } from '@nestjs/mapped-types';
 import { TripStatus } from '../entities/trip.entity';
-import { RouteStopType } from '@/modules/route-stops/entities/route-stop.entity';
+import { RouteStopType } from 'modules/routes/entities/route-stop.entity';
 
 export class UpdateTripStopDto {
     @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })

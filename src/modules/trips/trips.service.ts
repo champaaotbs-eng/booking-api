@@ -6,19 +6,19 @@ import {
 } from '@nestjs/common';
 import { TripsRepository } from './trips.repository';
 import { SeatLayoutsRepository } from '@/modules/seat-layouts/seat-layouts.repository';
-import { RouteStopsRepository } from '@/modules/route-stops/route-stops.repository';
+import { RoutesRepository } from '@/modules/routes/routes.repository';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterTripDto, SortTripDto } from './dto/query-trip.dto';
 import { CancelTripDto, CreateTripDto, PatchTripStopsDto, UpdateTripDto } from './dto/trip.dto';
 import { TripStatus } from './entities/trip.entity';
-import { RouteStopType } from '@/modules/route-stops/entities/route-stop.entity';
+import { RouteStopType } from 'modules/routes/entities/route-stop.entity';
 
 @Injectable()
 export class TripsService {
     constructor(
         private readonly tripsRepository: TripsRepository,
         private readonly seatLayoutsRepository: SeatLayoutsRepository,
-        private readonly routeStopsRepository: RouteStopsRepository,
+        private readonly routesRepository: RoutesRepository,
     ) { }
 
     findPublic(query: QueryDto<FilterTripDto, SortTripDto>) {
@@ -72,7 +72,7 @@ export class TripsService {
     async createCompanyTrip(dto: CreateTripDto) {
         this.validateTripTimeRange(dto.departureTime, dto.arrivalTime);
 
-        const routeStops = await this.routeStopsRepository.findForTripGeneration(
+        const routeStops = await this.routesRepository.findForTripGeneration(
             dto.routeId,
             dto.busCompanyId,
         );

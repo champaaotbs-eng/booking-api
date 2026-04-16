@@ -6,14 +6,14 @@ import { TripsService } from './trips.service';
 import { TripsController } from './trips.controller';
 import { TripsRepository } from './trips.repository';
 import { SeatLayoutsModule } from '@/modules/seat-layouts/seat-layouts.module';
-import { RouteStopsModule } from '@/modules/route-stops/route-stops.module';
+import { RoutesModule } from '@/modules/routes/routes.module';
 import { BookingSeatEntity } from '@/modules/bookings/entities/booking-seat.entity';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([TripEntity, TripStopEntity, BookingSeatEntity]),
         SeatLayoutsModule,
-        RouteStopsModule,
+        RoutesModule,
     ],
     controllers: [TripsController],
     providers: [TripsService, TripsRepository],

@@ -12,7 +12,7 @@ import { PaginationResponseDto } from '@/utils/types/pagination-response.dto';
 import { NullableType } from '@/utils/types/nullable.type';
 import { BookingSeatEntity } from '@/modules/bookings/entities/booking-seat.entity';
 import { BookingStatus } from '@/modules/bookings/entities/booking.entity';
-import { RouteStopType } from '@/modules/route-stops/entities/route-stop.entity';
+import { RouteStopType } from 'modules/routes/entities/route-stop.entity';
 
 type TripStopSeed = {
     stopId: string;
@@ -65,14 +65,36 @@ export class TripsRepository {
             });
         }
         if (filterOptions?.fromLocationId) {
-            qb.andWhere('route.fromLocationId = :fromLocationId', {
-                fromLocationId: filterOptions.fromLocationId,
-            });
+            qb.andWhere(
+                `EXISTS (
+                    SELECT 1
+                    FROM route_stops rs
+                    WHERE rs.route_id = route.route_id
+                      AND rs.station_id = :fromLocationId
+                      AND rs.stop_order = (
+                        SELECT MIN(rs_min.stop_order)
+                        FROM route_stops rs_min
+                        WHERE rs_min.route_id = route.route_id
+                      )
+                )`,
+                { fromLocationId: filterOptions.fromLocationId },
+            );
         }
         if (filterOptions?.toLocationId) {
-            qb.andWhere('route.toLocationId = :toLocationId', {
-                toLocationId: filterOptions.toLocationId,
-            });
+            qb.andWhere(
+                `EXISTS (
+                    SELECT 1
+                    FROM route_stops rs
+                    WHERE rs.route_id = route.route_id
+                      AND rs.station_id = :toLocationId
+                      AND rs.stop_order = (
+                        SELECT MAX(rs_max.stop_order)
+                        FROM route_stops rs_max
+                        WHERE rs_max.route_id = route.route_id
+                      )
+                )`,
+                { toLocationId: filterOptions.toLocationId },
+            );
         }
         if (isPublic) {
             qb.andWhere('trip.isPublished = TRUE');
@@ -92,12 +114,10 @@ export class TripsRepository {
         const qb = this.tripRepo
             .createQueryBuilder('trip')
             .leftJoinAndSelect('trip.route', 'route')
-            .leftJoinAndSelect('route.fromLocation', 'fromLocation')
-            .leftJoinAndSelect('route.toLocation', 'toLocation')
             .leftJoinAndSelect('trip.busCompany', 'busCompany')
             .leftJoinAndSelect('trip.tripStops', 'tripStops')
             .leftJoinAndSelect('tripStops.stop', 'routeStop')
-            .leftJoinAndSelect('routeStop.location', 'stopLocation');
+            .leftJoinAndSelect('routeStop.station', 'stopLocation');
 
         this.applyFilters(qb, filterOptions, isPublic);
 
@@ -165,13 +185,11 @@ export class TripsRepository {
             where: { tripId: id },
             relations: [
                 'route',
-                'route.fromLocation',
-                'route.toLocation',
                 'busCompany',
                 'busVersion',
                 'tripStops',
                 'tripStops.stop',
-                'tripStops.stop.location',
+                'tripStops.stop.station',
             ],
             order: {
                 tripStops: {

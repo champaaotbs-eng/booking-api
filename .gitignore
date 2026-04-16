@@ -40,3 +40,6 @@ storage
 *.dbml
 
 .claude
+.github
+_bmad
+.agents

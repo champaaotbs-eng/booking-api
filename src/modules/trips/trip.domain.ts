@@ -1,6 +1,6 @@
 import { Allow } from 'class-validator';
 import { TripStatus } from './entities/trip.entity';
-import { RouteStopType } from '@/modules/route-stops/entities/route-stop.entity';
+import { RouteStopType } from 'modules/routes/entities/route-stop.entity';
 
 export class Trip {
     @Allow() id: string;
