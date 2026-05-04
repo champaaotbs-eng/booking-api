@@ -67,6 +67,7 @@ export class AuthService {
       }),
       admin: {
         adminId: admin.adminId,
+        busCompanyId: admin.busCompanyId,
         username: admin.username,
         fullName: admin.fullName,
         permissions: admin.permissions,

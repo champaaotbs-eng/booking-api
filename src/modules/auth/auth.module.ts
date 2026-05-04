@@ -21,7 +21,7 @@ import { RolesModule } from 'modules/roles/roles.module';
     PassportModule,
     JwtModule.register({}),
     MailModule,
-    OtpModule
+    OtpModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, JwtRefreshStrategy, LocalStrategy, AdminStrategy]

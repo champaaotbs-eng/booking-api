@@ -1,3 +1,4 @@
+import { All } from '@nestjs/common';
 import { Allow } from 'class-validator';
 import { Role } from 'modules/roles/role.domain';
 
@@ -11,6 +12,7 @@ export class Admin {
     @Allow() avatarUrl?: string;
     @Allow() publicId?: string;
     @Allow() isActive: boolean;
+    @Allow() busCompanyId?: string | null;
     @Allow() createdAt: Date;
     @Allow() updatedAt: Date;
     @Allow() deletedAt?: Date;

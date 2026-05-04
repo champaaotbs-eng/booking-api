@@ -1,133 +1,52 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { SeatLayoutsService } from './seat-layouts.service';
-import { QueryDto } from '@/utils/types/query.dto';
-import { CreateSeatLayoutDto, CreateSeatDto, UpdateSeatLayoutDto, UpdateSeatDto } from './dto/seat-layout.dto';
+import { CreateSeatLayoutDto, UpdateSeatLayoutDto } from './dto/seat-layout.dto';
+import { SeatLayout, Seat } from './seat-layout.domain';
+import { IPaginationOptions } from '@/utils/types/pagination-options';
+import { PaginationResponseDto } from '@/utils/types/pagination-response.dto';
+import { NullableType } from '@/utils/types/nullable.type';
 
-@Controller()
+@Controller('seat-layouts')
 export class SeatLayoutsController {
-    constructor(private readonly seatLayoutsService: SeatLayoutsService) { }
+    constructor(private readonly service: SeatLayoutsService) { }
 
-    @Get('seat-layouts')
-    findAll(@Query() query: QueryDto) {
-        return this.seatLayoutsService.findAll(query);
+    @Get()
+    async getAllSeatLayouts(
+        @Query('page') page: number = 1,
+        @Query('limit') limit: number = 10,
+        @Query('name') name?: string,
+        @Query('companyId') companyId?: string,
+    ): Promise<PaginationResponseDto<SeatLayout>> {
+        const paginationOptions: IPaginationOptions = { page, limit };
+        const filterOptions = { name, companyId };
+        return this.service.getAllSeatLayouts(paginationOptions, filterOptions);
     }
 
-    @Get('seat-layouts/:id')
-    findOne(@Param('id') id: string) {
-        return this.seatLayoutsService.findOne(id);
+    @Get(':id/check-eligibility')
+    async checkEligibilitySeatLayout(@Param('id') id: string): Promise<{ isEligible: boolean }> {
+        return this.service.checkEligibilitySeatLayout(id);
     }
 
-    @Get('company/seat-layouts')
-    findCompany(@Query('companyId') companyId: string, @Query() query: QueryDto) {
-        return this.seatLayoutsService.findCompany(companyId, query);
+    @Get(':id')
+    async getSeatLayoutById(@Param('id') id: string): Promise<NullableType<SeatLayout & { seats: Seat[] }>> {
+        return this.service.getSeatLayoutById(id);
     }
 
-    @Get('company/seat-layouts/:id')
-    findOneCompany(@Param('id') id: string, @Query('companyId') companyId: string) {
-        return this.seatLayoutsService.findOneCompany(id, companyId);
+    @Post()
+    async createSeatLayout(@Body() dto: CreateSeatLayoutDto): Promise<SeatLayout & { seats: Seat[] }> {
+        return this.service.createSeatLayout(dto);
     }
 
-    @Post('seat-layouts')
-    create(@Body() dto: CreateSeatLayoutDto) {
-        return this.seatLayoutsService.create(dto);
-    }
-
-    @Post('company/seat-layouts')
-    createCompany(@Query('companyId') companyId: string, @Body() dto: CreateSeatLayoutDto) {
-        return this.seatLayoutsService.createCompany(companyId, dto);
-    }
-
-    @Patch('seat-layouts/:id')
-    update(@Param('id') id: string, @Body() dto: UpdateSeatLayoutDto) {
-        return this.seatLayoutsService.update(id, dto);
-    }
-
-    @Patch('company/seat-layouts/:id')
-    updateCompany(
+    @Patch(':id')
+    async updateSeatLayout(
         @Param('id') id: string,
-        @Query('companyId') companyId: string,
         @Body() dto: UpdateSeatLayoutDto,
-    ) {
-        return this.seatLayoutsService.updateCompany(id, companyId, dto);
+    ): Promise<NullableType<SeatLayout & { seats: Seat[] }>> {
+        return this.service.updateSeatLayout(id, dto);
     }
 
-    @Delete('seat-layouts/:id')
-    remove(@Param('id') id: string) {
-        return this.seatLayoutsService.remove(id);
+    @Delete(':id')
+    async removeSeatLayout(@Param('id') id: string): Promise<void> {
+        await this.service.removeSeatLayout(id);
     }
-
-    @Delete('company/seat-layouts/:id')
-    removeCompany(@Param('id') id: string, @Query('companyId') companyId: string) {
-        return this.seatLayoutsService.removeCompany(id, companyId);
-    }
-
-    @Post('seat-layouts/:id/seats')
-    addSeat(@Param('id') layoutId: string, @Body() dto: CreateSeatDto) {
-        return this.seatLayoutsService.addSeat(layoutId, dto);
-    }
-
-    @Post('company/seat-layouts/:id/seats')
-    addSeatCompany(
-        @Param('id') layoutId: string,
-        @Query('companyId') companyId: string,
-        @Body() dto: CreateSeatDto,
-    ) {
-        return this.seatLayoutsService.addSeatCompany(layoutId, companyId, dto);
-    }
-
-    @Patch('seat-layouts/:id/seats/:seatId')
-    updateSeat(
-        @Param('id') layoutId: string,
-        @Param('seatId') seatId: string,
-        @Body() dto: UpdateSeatDto,
-    ) {
-        return this.seatLayoutsService.updateSeat(layoutId, seatId, dto);
-    }
-
-    @Patch('company/seat-layouts/:id/seats/:seatId')
-    updateSeatCompany(
-        @Param('id') layoutId: string,
-        @Param('seatId') seatId: string,
-        @Query('companyId') companyId: string,
-        @Body() dto: UpdateSeatDto,
-    ) {
-        return this.seatLayoutsService.updateSeatCompany(layoutId, companyId, seatId, dto);
-    }
-
-    @Delete('seat-layouts/:id/seats/:seatId')
-    removeSeat(@Param('id') layoutId: string, @Param('seatId') seatId: string) {
-        return this.seatLayoutsService.removeSeat(layoutId, seatId);
-    }
-
-    @Delete('company/seat-layouts/:id/seats/:seatId')
-    removeSeatCompany(
-        @Param('id') layoutId: string,
-        @Param('seatId') seatId: string,
-        @Query('companyId') companyId: string,
-    ) {
-        return this.seatLayoutsService.removeSeatCompany(layoutId, companyId, seatId);
-    }
-
-    @Put('seat-layouts/:id/seats')
-    replaceSeats(@Param('id') layoutId: string, @Body() seats: CreateSeatDto[]) {
-        return this.seatLayoutsService.replaceSeats(layoutId, seats);
-    }
-
-    @Put('company/seat-layouts/:id/seats')
-    replaceSeatsCompany(
-        @Param('id') layoutId: string,
-        @Query('companyId') companyId: string,
-        @Body() seats: CreateSeatDto[],
-    ) {
-        return this.seatLayoutsService.replaceSeatsCompany(layoutId, companyId, seats);
-    }
-
-    @Post('seat-layouts/:id/assign-version/:busVersionId')
-    assignToVersion(
-        @Param('id') seatLayoutId: string,
-        @Param('busVersionId') busVersionId: string,
-    ) {
-        return this.seatLayoutsService.assignLayoutToVersion(busVersionId, seatLayoutId);
-    }
-
 }

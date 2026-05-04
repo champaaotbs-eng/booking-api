@@ -156,7 +156,7 @@ export class TripsService {
         const bookedSeatIds = await this.tripsRepository.getBookedSeatIds(tripId);
         return allSeats.map((seat) => ({
             ...seat,
-            isAvailable: !bookedSeatIds.includes(seat.id),
+            isAvailable: !bookedSeatIds.includes(seat.seatId),
         }));
     }
 }

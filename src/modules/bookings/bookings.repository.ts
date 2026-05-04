@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, FindOptionsWhere, In, Not, Repository } from 'typeorm';
 import { BookingEntity, BookingStatus, PaymentMethod } from './entities/booking.entity';
 import { BookingSeatEntity } from './entities/booking-seat.entity';
-import { SeatEntity } from '@/modules/seat-layouts/entities/seat.entity';
 import { TripEntity } from '@/modules/trips/entities/trip.entity';
 import { TripStopEntity } from '@/modules/trips/entities/trip-stop.entity';
 import { BookingMapper } from './booking.mapper';
@@ -31,8 +30,6 @@ export class BookingsRepository {
         private readonly bookingRepo: Repository<BookingEntity>,
         @InjectRepository(BookingSeatEntity)
         private readonly bookingSeatRepo: Repository<BookingSeatEntity>,
-        @InjectRepository(SeatEntity)
-        private readonly seatRepo: Repository<SeatEntity>,
         @InjectRepository(TripEntity)
         private readonly tripRepo: Repository<TripEntity>,
         @InjectRepository(TripStopEntity)
@@ -55,6 +52,32 @@ export class BookingsRepository {
             const existed = await manager.count(BookingEntity, { where: { bookingCode } });
             if (!existed) return bookingCode;
         }
+    }
+
+    private async findSeatCodeMapBySeatIds(seatIds: string[]): Promise<Record<string, string>> {
+        if (!seatIds.length) {
+            return {};
+        }
+
+        const seatRows = await this.bookingRepo.query(
+            `
+                SELECT
+                    s.seat_id AS "seatId",
+                    s.seat_code AS "seatCode"
+                FROM seats s
+                WHERE s.seat_id = ANY($1::uuid[])
+                  AND s.deleted_at IS NULL
+            `,
+            [seatIds],
+        );
+
+        return seatRows.reduce(
+            (acc: Record<string, string>, row: { seatId: string; seatCode: string }) => {
+                acc[row.seatId] = row.seatCode;
+                return acc;
+            },
+            {},
+        );
     }
 
     async findManyWithPagination({
@@ -120,11 +143,9 @@ export class BookingsRepository {
             relations: ['trip', 'trip.route', 'trip.busCompany'],
         });
         if (!entity) return null;
-        const seats = await this.bookingSeatRepo.find({
-            where: { bookingId: id },
-            relations: ['seat'],
-        });
-        return BookingMapper.toDomain(entity, seats);
+        const seats = await this.bookingSeatRepo.find({ where: { bookingId: id } });
+        const seatCodeMap = await this.findSeatCodeMapBySeatIds(seats.map((seat) => seat.seatId));
+        return BookingMapper.toDomain(entity, seats, seatCodeMap);
     }
 
     async findEntityById(id: string): Promise<NullableType<BookingEntity>> {
@@ -203,18 +224,26 @@ export class BookingsRepository {
             }
 
             // Ensure seats belong to this trip's active bus layout
-            const seats = await manager
-                .createQueryBuilder(SeatEntity, 'seat')
-                .innerJoin('bus_version_layouts', 'bvl', 'bvl.seat_layout_id = seat.layout_id')
-                .where('bvl.bus_version_id = :busVersionId', { busVersionId: trip.busVersionId })
-                .andWhere('seat.seat_id IN (:...seatIds)', { seatIds: dto.seatIds })
-                .getMany();
+            const seats = await manager.query(
+                `
+                    SELECT
+                        s.seat_id AS "seatId",
+                        s.price AS "price"
+                    FROM seats s
+                    INNER JOIN bus_version_layouts bvl ON bvl.seat_layout_id = s.layout_id
+                    WHERE bvl.bus_version_id = $1
+                      AND s.seat_id = ANY($2::uuid[])
+                      AND s.deleted_at IS NULL
+                `,
+                [trip.busVersionId, dto.seatIds],
+            );
+
             if (seats.length !== dto.seatIds.length) {
                 throw new BadRequestException('invalid_trip_seat_selection');
             }
 
             const totalAmount = dto.seatIds.reduce((sum, seatId) => {
-                const seat = seats.find((s) => s.id === seatId);
+                const seat = seats.find((s) => s.seatId === seatId);
                 return sum + Number(trip.basePrice) + Number(seat!.price);
             }, 0);
 
@@ -243,7 +272,7 @@ export class BookingsRepository {
             const bookingSeats = seats.map((seat) =>
                 manager.create(BookingSeatEntity, {
                     bookingId: savedBooking.bookingId,
-                    seatId: seat.id,
+                    seatId: seat.seatId,
                     price: Number(trip.basePrice) + Number(seat.price),
                 }),
             );

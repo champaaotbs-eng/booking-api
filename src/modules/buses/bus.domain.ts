@@ -3,7 +3,7 @@ import { BusType } from './entities/bus.entity';
 import { BusVersionStatus } from './entities/bus-version.entity';
 
 export class Bus {
-    @Allow() id: string;
+    @Allow() busId: string;
     @Allow() companyId: string;
     @Allow() busType: BusType;
     @Allow() busCode: string;
@@ -14,10 +14,11 @@ export class Bus {
 }
 
 export class BusVersion {
-    @Allow() id: string;
+    @Allow() busVersionId: string;
     @Allow() busId: string;
     @Allow() versionNo: number;
     @Allow() driverPhone?: string;
+    @Allow() layoutId?: string;
     @Allow() status: BusVersionStatus;
     @Allow() createdAt: Date;
 }

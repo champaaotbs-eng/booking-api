@@ -1,23 +1,26 @@
 import { Allow } from 'class-validator';
-import { SeatType } from './entities/seat.entity';
+import { SeatType } from './seat.types';
 
 export class SeatLayout {
-    @Allow() id: string;
-    @Allow() companyId?: string;
+    @Allow() seatLayoutId: string;
+    @Allow() busCompanyId?: string;
     @Allow() name: string;
-    @Allow() rows: number;
-    @Allow() columns: number;
+    @Allow() numberRows: number;
+    @Allow() numberCols: number;
+    @Allow() numberFloors: number;
     @Allow() createdAt: Date;
+    @Allow() updatedAt: Date;
     @Allow() seats?: Seat[];
 }
 
 export class Seat {
-    @Allow() id: string;
+    @Allow() seatId: string;
     @Allow() layoutId: string;
     @Allow() seatCode: string;
     @Allow() row: number;
     @Allow() col: number;
     @Allow() floor: number;
     @Allow() seatType: SeatType;
-    @Allow() price: number;
+    @Allow() createdAt: Date;
+    @Allow() updatedAt: Date;
 }

@@ -5,10 +5,14 @@ import { FilterAdminDto, SortAdminDto } from './dto/query-admin.dto';
 import { ChangeAdminPasswordDto, CreateAdminDto, UpdateAdminDto } from './dto/admin.dto';
 import * as bcrypt from 'bcrypt';
 import { AdminMapper } from './admin.mapper';
+import { BusCompaniesService } from 'modules/bus-companies/bus-companies.service';
 
 @Injectable()
 export class AdminsService {
-    constructor(private readonly adminsRepository: AdminsRepository) { }
+    constructor(
+        private readonly adminsRepository: AdminsRepository,
+        private readonly busCompanyAdminRepository: BusCompaniesService,
+    ) { }
 
     findAll(query: QueryDto<FilterAdminDto, SortAdminDto>) {
         return this.adminsRepository.findManyWithPagination({
@@ -51,7 +55,11 @@ export class AdminsService {
     async findAdminByUsername(username: string) {
         const admin = await this.adminsRepository.findByUsername(username);
         if (!admin) throw new NotFoundException('Admin not found');
-        return { ...AdminMapper.toDomain(admin), password: admin.password };
+
+        const busCompanyAdmin = await this.busCompanyAdminRepository.findCompanyAdminByAdminId(admin.adminId);
+        const busCompanyId = busCompanyAdmin?.companyId ?? null;
+
+        return { ...AdminMapper.toDomain(admin), password: admin.password, busCompanyId };
     }
 
 

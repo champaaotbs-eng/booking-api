@@ -5,8 +5,8 @@ import { BusVersionEntity } from './entities/bus-version.entity';
 export class BusMapper {
     static toDomain(raw: BusEntity): Bus {
         const domain = new Bus();
-        domain.id = raw.id;
-        domain.companyId = raw.companyId;
+        domain.busId = raw.busId;
+        domain.companyId = raw.busCompanyId;
         domain.busType = raw.busType;
         domain.busCode = raw.busCode;
         domain.busName = raw.busName;
@@ -20,10 +20,11 @@ export class BusMapper {
 export class BusVersionMapper {
     static toDomain(raw: BusVersionEntity): BusVersion {
         const domain = new BusVersion();
-        domain.id = raw.id;
+        domain.busVersionId = raw.busVersionId;
         domain.busId = raw.busId;
         domain.versionNo = raw.versionNo;
         domain.driverPhone = raw.driverPhone;
+        domain.layoutId = raw.layoutId;
         domain.status = raw.status;
         domain.createdAt = raw.createdAt;
         return domain;

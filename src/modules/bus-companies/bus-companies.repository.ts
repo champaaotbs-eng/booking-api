@@ -112,6 +112,10 @@ export class BusCompaniesRepository {
         return this.adminRepo.findOne({ where: { companyId, adminId } });
     }
 
+    async findCompanyAdminByAdminId(adminId: string): Promise<NullableType<BusCompanyAdminEntity>> {
+        return this.adminRepo.findOne({ where: { adminId } });
+    }
+
     async addAdmin(companyId: string, dto: AddBusCompanyAdminDto): Promise<BusCompanyAdminEntity> {
         const entity = this.adminRepo.create({ companyId, adminId: dto.adminId, position: dto.position });
         return this.adminRepo.save(entity);

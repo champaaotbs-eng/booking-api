@@ -1,4 +1,4 @@
-import { Column, DeleteDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { SeatLayoutEntity } from './seat-layout.entity';
 
 export enum SeatType {
@@ -13,19 +13,19 @@ export class SeatEntity {
     seatId: string;
 
     @ManyToOne(() => SeatLayoutEntity, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'layout_id', referencedColumnName: 'seatLayoutId' })
+    @JoinColumn({ name: 'seat_layout_id', referencedColumnName: 'seatLayoutId' })
     layout: SeatLayoutEntity;
 
-    @Column({ name: 'layout_id' })
+    @Column({ name: 'seat_layout_id' })
     layoutId: string;
 
-    @Column({ name: 'seat_code', length: 10, nullable: true })
+    @Column({ name: 'seat_code', length: 10, nullable: false })
     seatCode: string;
 
-    @Column({ name: 'row', type: 'int', nullable: true })
+    @Column({ name: 'row', type: 'int', nullable: false })
     row: number;
 
-    @Column({ name: 'col', type: 'int', nullable: true })
+    @Column({ name: 'col', type: 'int', nullable: false })
     col: number;
 
     @Column({ name: 'floor', type: 'int', default: 1 })
@@ -34,13 +34,9 @@ export class SeatEntity {
     @Column({ name: 'seat_type', type: 'enum', enum: SeatType })
     seatType: SeatType;
 
-    @Column({ name: 'price', type: 'decimal', precision: 10, scale: 2, default: 0 })
-    price: number;
+    @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+    createdAt: Date;
 
-    @DeleteDateColumn({ name: 'deleted_at', type: 'timestamptz', nullable: true })
-    deletedAt?: Date;
-
-    get id(): string {
-        return this.seatId;
-    }
+    @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+    updatedAt: Date;
 }

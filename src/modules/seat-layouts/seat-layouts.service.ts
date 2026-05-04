@@ -1,169 +1,84 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { SeatLayoutsRepository } from './seat-layouts.repository';
-import { QueryDto } from '@/utils/types/query.dto';
-import { CreateSeatLayoutDto, CreateSeatDto, UpdateSeatLayoutDto, UpdateSeatDto } from './dto/seat-layout.dto';
+import { CreateSeatLayoutDto, UpdateSeatLayoutDto } from './dto/seat-layout.dto';
+import { SeatLayout, Seat } from './seat-layout.domain';
+import { IPaginationOptions } from '@/utils/types/pagination-options';
+import { PaginationResponseDto } from '@/utils/types/pagination-response.dto';
+import { NullableType } from '@/utils/types/nullable.type';
 
 @Injectable()
 export class SeatLayoutsService {
-    constructor(private readonly seatLayoutsRepository: SeatLayoutsRepository) { }
+    constructor(private readonly repository: SeatLayoutsRepository) { }
 
-    findAll(query: QueryDto) {
-        return this.seatLayoutsRepository.findManyWithPagination({
-            filterOptions: query.filters,
-            paginationOptions: { page: query.page || 1, limit: query.limit || 10 },
+    async getAllSeatLayouts(
+        paginationOptions: IPaginationOptions,
+        filterOptions?: { name?: string; companyId?: string } | null,
+    ): Promise<PaginationResponseDto<SeatLayout>> {
+        return this.repository.findManyWithPagination({
+            filterOptions,
+            paginationOptions,
         });
     }
 
-    findCompany(companyId: string, query: QueryDto) {
-        if (!companyId) {
-            throw new BadRequestException('company_id_required');
+    async getSeatLayoutById(id: string): Promise<NullableType<SeatLayout & { seats: Seat[] }>> {
+        const seatLayout = await this.repository.findById(id);
+        if (!seatLayout) {
+            throw new NotFoundException('Seat layout not found');
         }
-        query.filters = {
-            ...(query.filters as Record<string, unknown>),
-            companyId,
-        };
-        return this.findAll(query);
+        return seatLayout;
     }
 
-    async findOne(id: string) {
-        const layout = await this.seatLayoutsRepository.findById(id);
-        if (!layout) throw new NotFoundException('seat_layout_not_found');
-        return layout;
+    async createSeatLayout(dto: CreateSeatLayoutDto): Promise<SeatLayout & { seats: Seat[] }> {
+        return this.repository.create(dto);
     }
 
-    async findOneCompany(id: string, companyId: string) {
-        const layout = await this.findOne(id);
-        if (layout.companyId !== companyId) {
-            throw new ForbiddenException('forbidden_company_resource');
+    async updateSeatLayout(
+        id: string,
+        dto: UpdateSeatLayoutDto,
+    ): Promise<NullableType<SeatLayout & { seats: Seat[] }>> {
+        // Check if seat layout exists
+        const seatLayout = await this.repository.findById(id);
+        if (!seatLayout) {
+            throw new NotFoundException('Seat layout not found');
         }
-        return layout;
-    }
 
-    create(dto: CreateSeatLayoutDto) {
-        return this.seatLayoutsRepository.create(dto);
-    }
-
-    createCompany(companyId: string, dto: CreateSeatLayoutDto) {
-        if (!companyId) {
-            throw new BadRequestException('company_id_required');
+        // Check if seat layout is linked to any buses
+        const isEligible = await this.repository.checkEligibility(id);
+        if (!isEligible) {
+            throw new ConflictException('Cannot update seat layout that is linked to buses');
         }
-        return this.seatLayoutsRepository.create({
-            ...dto,
-            companyId,
-        });
-    }
 
-    async update(id: string, dto: UpdateSeatLayoutDto) {
-        await this.findOne(id);
-        try {
-            return await this.seatLayoutsRepository.update(id, dto);
-        } catch (error) {
-            if (error instanceof Error && error.message === 'seat_layout_in_use') {
-                throw new BadRequestException('seat_layout_in_use');
-            }
-            throw error;
+        const result = await this.repository.update(id, dto);
+        if (!result) {
+            throw new NotFoundException('Failed to update seat layout');
         }
+        return result;
     }
 
-    async updateCompany(id: string, companyId: string, dto: UpdateSeatLayoutDto) {
-        await this.findOneCompany(id, companyId);
-        const { companyId: _ignoredCompanyId, ...payload } = dto;
-        return this.seatLayoutsRepository.update(id, payload);
-    }
-
-    async remove(id: string) {
-        await this.findOne(id);
-        try {
-            return await this.seatLayoutsRepository.remove(id);
-        } catch (error) {
-            if (error instanceof Error && error.message === 'seat_layout_in_use') {
-                throw new BadRequestException('seat_layout_in_use');
-            }
-            throw error;
+    async removeSeatLayout(id: string): Promise<void> {
+        // Check if seat layout exists
+        const seatLayout = await this.repository.findById(id);
+        if (!seatLayout) {
+            throw new NotFoundException('Seat layout not found');
         }
-    }
 
-    async removeCompany(id: string, companyId: string) {
-        await this.findOneCompany(id, companyId);
-        return this.remove(id);
-    }
-
-    async addSeat(layoutId: string, dto: CreateSeatDto) {
-        await this.findOne(layoutId);
-        try {
-            return await this.seatLayoutsRepository.addSeat(layoutId, dto);
-        } catch (error) {
-            if (error instanceof Error && error.message === 'seat_layout_in_use') {
-                throw new BadRequestException('seat_layout_in_use');
-            }
-            throw error;
+        // Check if seat layout is linked to any buses
+        const isEligible = await this.repository.checkEligibility(id);
+        if (!isEligible) {
+            throw new ConflictException('Cannot remove seat layout that is linked to buses');
         }
+
+        await this.repository.remove(id);
     }
 
-    async addSeatCompany(layoutId: string, companyId: string, dto: CreateSeatDto) {
-        await this.findOneCompany(layoutId, companyId);
-        return this.seatLayoutsRepository.addSeat(layoutId, dto);
-    }
-
-    async updateSeat(layoutId: string, seatId: string, dto: UpdateSeatDto) {
-        await this.findOne(layoutId);
-        let seat;
-        try {
-            seat = await this.seatLayoutsRepository.updateSeat(layoutId, seatId, dto);
-        } catch (error) {
-            if (error instanceof Error && error.message === 'seat_layout_in_use') {
-                throw new BadRequestException('seat_layout_in_use');
-            }
-            throw error;
+    async checkEligibilitySeatLayout(id: string): Promise<{ isEligible: boolean }> {
+        // Check if seat layout exists
+        const seatLayout = await this.repository.findById(id);
+        if (!seatLayout) {
+            throw new NotFoundException('Seat layout not found');
         }
-        if (!seat) throw new NotFoundException('seat_not_found');
-        return seat;
-    }
 
-    async updateSeatCompany(layoutId: string, companyId: string, seatId: string, dto: UpdateSeatDto) {
-        await this.findOneCompany(layoutId, companyId);
-        return this.updateSeat(layoutId, seatId, dto);
-    }
-
-    async removeSeat(layoutId: string, seatId: string) {
-        await this.findOne(layoutId);
-        try {
-            return await this.seatLayoutsRepository.removeSeat(layoutId, seatId);
-        } catch (error) {
-            if (error instanceof Error && error.message === 'seat_layout_in_use') {
-                throw new BadRequestException('seat_layout_in_use');
-            }
-            throw error;
-        }
-    }
-
-    async removeSeatCompany(layoutId: string, companyId: string, seatId: string) {
-        await this.findOneCompany(layoutId, companyId);
-        return this.seatLayoutsRepository.removeSeat(layoutId, seatId);
-    }
-
-    async replaceSeats(layoutId: string, seats: CreateSeatDto[]) {
-        await this.findOne(layoutId);
-        try {
-            return await this.seatLayoutsRepository.replaceSeats(layoutId, seats);
-        } catch (error) {
-            if (error instanceof Error && error.message === 'seat_layout_in_use') {
-                throw new BadRequestException('seat_layout_in_use');
-            }
-            throw error;
-        }
-    }
-
-    async replaceSeatsCompany(layoutId: string, companyId: string, seats: CreateSeatDto[]) {
-        await this.findOneCompany(layoutId, companyId);
-        return this.seatLayoutsRepository.replaceSeats(layoutId, seats);
-    }
-
-    assignLayoutToVersion(busVersionId: string, seatLayoutId: string) {
-        return this.seatLayoutsRepository.assignLayoutToVersion(busVersionId, seatLayoutId);
-    }
-
-    getSeatsByBusVersion(busVersionId: string) {
-        return this.seatLayoutsRepository.getSeatsByBusVersion(busVersionId);
+        const isEligible = await this.repository.checkEligibility(id);
+        return { isEligible };
     }
 }

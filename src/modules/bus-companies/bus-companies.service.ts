@@ -22,6 +22,10 @@ export class BusCompaniesService {
         return company;
     }
 
+    async findCompanyAdminByAdminId(adminId: string) {
+        return this.busCompaniesRepository.findCompanyAdminByAdminId(adminId);
+    }
+
     async create(dto: CreateBusCompanyDto) {
         const existedByName = await this.busCompaniesRepository.findByName(dto.name);
         if (existedByName) {

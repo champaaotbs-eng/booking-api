@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { BusEntity } from './bus.entity';
+import { SeatLayoutEntity } from 'modules/seat-layouts/entities/seat-layout.entity';
 
 export enum BusVersionStatus {
     ACTIVE = 'ACTIVE',
@@ -28,10 +29,13 @@ export class BusVersionEntity {
     @Column({ name: 'status', type: 'enum', enum: BusVersionStatus, default: BusVersionStatus.ACTIVE })
     status: BusVersionStatus;
 
+    @Column({ name: 'layout_id' })
+    layoutId: string;
+
+    @ManyToOne(() => SeatLayoutEntity, { nullable: true, onDelete: 'SET NULL' })
+    @JoinColumn({ name: 'layout_id', referencedColumnName: 'seatLayoutId' })
+    seatLayout?: SeatLayoutEntity;
+
     @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
     createdAt: Date;
-
-    get id(): string {
-        return this.busVersionId;
-    }
 }

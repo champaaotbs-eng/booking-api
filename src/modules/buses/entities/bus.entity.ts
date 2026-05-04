@@ -39,12 +39,4 @@ export class BusEntity {
 
     @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
     updatedAt: Date;
-
-    get id(): string {
-        return this.busId;
-    }
-
-    get companyId(): string {
-        return this.busCompanyId;
-    }
 }

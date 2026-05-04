@@ -3,7 +3,11 @@ import { BookingEntity } from './entities/booking.entity';
 import { BookingSeatEntity } from './entities/booking-seat.entity';
 
 export class BookingMapper {
-    static toDomain(raw: BookingEntity, seats?: BookingSeatEntity[]): Booking {
+    static toDomain(
+        raw: BookingEntity,
+        seats?: BookingSeatEntity[],
+        seatCodeBySeatId: Record<string, string> = {},
+    ): Booking {
         const domain = new Booking();
         domain.id = raw.id;
         domain.bookingCode = raw.bookingCode;
@@ -27,7 +31,7 @@ export class BookingMapper {
             domain.seats = seats.map((s) => ({
                 id: s.id,
                 seatId: s.seatId,
-                seatCode: s.seat?.seatCode,
+                seatCode: seatCodeBySeatId[s.seatId],
                 price: Number(s.price),
             }));
         }

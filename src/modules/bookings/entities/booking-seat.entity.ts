@@ -1,6 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { BookingEntity } from './booking.entity';
-import { SeatEntity } from '@/modules/seat-layouts/entities/seat.entity';
 
 @Entity('booking_seats')
 export class BookingSeatEntity {
@@ -13,10 +12,6 @@ export class BookingSeatEntity {
 
     @Column({ name: 'booking_id' })
     bookingId: string;
-
-    @ManyToOne(() => SeatEntity, { onDelete: 'RESTRICT' })
-    @JoinColumn({ name: 'seat_id', referencedColumnName: 'seatId' })
-    seat: SeatEntity;
 
     @Column({ name: 'seat_id' })
     seatId: string;

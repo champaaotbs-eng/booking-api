@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { BusCompanyEntity } from '@/modules/bus-companies/entities/bus-company.entity';
 
 @Entity('seat_layouts')
@@ -7,29 +7,27 @@ export class SeatLayoutEntity {
     seatLayoutId: string;
 
     @ManyToOne(() => BusCompanyEntity, { nullable: true, onDelete: 'SET NULL' })
-    @JoinColumn({ name: 'company_id', referencedColumnName: 'busCompanyId' })
+    @JoinColumn({ name: 'bus_company_id', referencedColumnName: 'busCompanyId' })
     company?: BusCompanyEntity;
 
-    @Column({ name: 'company_id' })
+    @Column({ name: 'bus_company_id' })
     busCompanyId?: string;
 
-    @Column({ name: 'name', length: 100, nullable: true })
+    @Column({ name: 'name', length: 100, nullable: false })
     name: string;
 
-    @Column({ name: 'rows', type: 'int', nullable: true })
-    rows: number;
+    @Column({ name: 'number_rows', type: 'int', nullable: false })
+    numberRows: number;
 
-    @Column({ name: 'columns', type: 'int', nullable: true })
-    columns: number;
+    @Column({ name: 'number_cols', type: 'int', nullable: false })
+    numberCols: number;
+
+    @Column({ name: 'number_floors', type: 'int', nullable: false, default: 1 })
+    numberFloors: number;
 
     @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
     createdAt: Date;
 
-    get id(): string {
-        return this.seatLayoutId;
-    }
-
-    get companyId(): string | undefined {
-        return this.busCompanyId;
-    }
+    @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+    updatedAt: Date;
 }
