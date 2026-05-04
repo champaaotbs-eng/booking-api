@@ -11,6 +11,9 @@ export class SeatLayoutMapper {
         domain.numberRows = raw.numberRows;
         domain.numberCols = raw.numberCols;
         domain.numberFloors = raw.numberFloors;
+        if (raw.seats) {
+            domain.seats = raw.seats.map(SeatMapper.toDomain);
+        }
         domain.createdAt = raw.createdAt;
         domain.updatedAt = raw.updatedAt;
         return domain;

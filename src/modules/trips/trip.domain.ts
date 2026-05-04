@@ -3,7 +3,7 @@ import { TripStatus } from './entities/trip.entity';
 import { RouteStopType } from 'modules/routes/entities/route-stop.entity';
 
 export class Trip {
-    @Allow() id: string;
+    @Allow() tripId: string;
     @Allow() routeId: string;
     @Allow() fromLocationName?: string;
     @Allow() toLocationName?: string;
@@ -21,7 +21,7 @@ export class Trip {
 }
 
 export class TripStop {
-    @Allow() id: string;
+    @Allow() tripStopId: string;
     @Allow() stopId: string;
     @Allow() routeStopId: string;
     @Allow() locationId?: string;

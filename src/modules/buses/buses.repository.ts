@@ -1,17 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, ILike, Not, Repository } from 'typeorm';
+import { Not, Repository, SelectQueryBuilder } from 'typeorm';
 import { BusEntity } from './entities/bus.entity';
 import { BusVersionEntity, BusVersionStatus } from './entities/bus-version.entity';
 import { TripEntity } from '@/modules/trips/entities/trip.entity';
 import { BusVersionLayoutEntity } from '@/modules/seat-layouts/entities/bus-version-layout.entity';
-import { SeatLayoutEntity } from '@/modules/seat-layouts/entities/seat-layout.entity';
 import { BusMapper, BusVersionMapper } from './bus.mapper';
 import { Bus, BusVersion } from './bus.domain';
 import { FilterBusDto, SortBusDto } from './dto/query-bus.dto';
 import {
     CreateBusDto,
-    CreateBusSeatLayoutDto,
     CreateBusVersionDto,
     UpdateBusDto,
     UpdateBusVersionDto,
@@ -46,14 +44,37 @@ export class BusesRepository {
         return payload;
     }
 
+    private buildBusReadQuery(): SelectQueryBuilder<BusEntity> {
+        return this.busRepo
+            .createQueryBuilder('bus')
+            .leftJoinAndMapOne(
+                'bus.latestVersion',
+                BusVersionEntity,
+                'latestVersion',
+                `latestVersion.busVersionId = ${this.busRepo
+                    .createQueryBuilder()
+                    .subQuery()
+                    .select('bv.busVersionId')
+                    .from(BusVersionEntity, 'bv')
+                    .where('bv.busId = bus.busId')
+                    .orderBy('bv.versionNo', 'DESC')
+                    .addOrderBy('bv.createdAt', 'DESC')
+                    .limit(1)
+                    .getQuery()}`,
+            )
+            .leftJoinAndMapOne(
+                'latestVersion.seatLayout',
+                'latestVersion.seatLayout',
+                'seatLayout',
+            );
+    }
+
     private async createNextVersion(
         versionRepo: Repository<BusVersionEntity>,
         bvlRepo: Repository<BusVersionLayoutEntity>,
-        seatLayoutRepo: Repository<SeatLayoutEntity>,
         busId: string,
-        busCompanyId: string,
         dto?: CreateBusVersionDto,
-        seatLayoutDto?: CreateBusSeatLayoutDto,
+        seatLayoutId?: string,
     ): Promise<BusVersionEntity> {
         const lastVersion = await versionRepo.findOne({
             where: { busId },
@@ -73,7 +94,7 @@ export class BusesRepository {
             versionNo: maxVersionNo + 1,
             driverPhone: dto?.driverPhone ?? lastVersion?.driverPhone,
             status: dto?.status ?? lastVersion?.status ?? BusVersionStatus.ACTIVE,
-            layoutId: dto?.layoutId ?? undefined,
+            layoutId: seatLayoutId ?? dto?.layoutId ?? undefined,
         });
         const saved = await versionRepo.save(entity);
 
@@ -88,45 +109,16 @@ export class BusesRepository {
             );
         }
 
-        // If caller provided a seatLayout dto, create it and link
-        if (seatLayoutDto) {
-            const layout = seatLayoutRepo.create({
-                busCompanyId,
-                name: seatLayoutDto.name,
-                numberRows: seatLayoutDto.numberRows,
-                numberCols: seatLayoutDto.numberCols,
-                numberFloors: seatLayoutDto.numberFloors ?? 1,
-            });
-            const savedLayout = await seatLayoutRepo.save(layout);
-
-            if (seatLayoutDto.seats?.length) {
-                for (const seat of seatLayoutDto.seats) {
-                    await seatLayoutRepo.query(
-                        `
-                            INSERT INTO seats (seat_layout_id, seat_code, row, col, floor, seat_type)
-                            VALUES ($1, $2, $3, $4, $5, $6)
-                        `,
-                        [
-                            savedLayout.seatLayoutId,
-                            seat.seatCode,
-                            seat.row,
-                            seat.col,
-                            seat.floor,
-                            seat.seatType,
-                        ],
-                    );
-                }
-            }
-
+        if (seatLayoutId) {
+            await bvlRepo.delete({ busVersionId: saved.busVersionId });
             await bvlRepo.save(
                 bvlRepo.create({
                     busVersionId: saved.busVersionId,
-                    seatLayoutId: savedLayout.seatLayoutId,
+                    seatLayoutId,
                 }),
             );
 
-            // persist layout on bus_versions.layout_id as well
-            await versionRepo.update({ busVersionId: saved.busVersionId }, { layoutId: savedLayout.seatLayoutId });
+            await versionRepo.update({ busVersionId: saved.busVersionId }, { layoutId: seatLayoutId });
             const updated = await versionRepo.findOne({ where: { busVersionId: saved.busVersionId } });
             return updated ?? saved;
         }
@@ -162,17 +154,42 @@ export class BusesRepository {
         sortOptions?: SortBusDto[] | null;
         paginationOptions: IPaginationOptions;
     }): Promise<PaginationResponseDto<Bus>> {
-        const where: FindOptionsWhere<BusEntity> = {};
-        if (filterOptions?.busName) where.busName = ILike(`%${filterOptions.busName}%`);
-        if (filterOptions?.companyId) where.busCompanyId = filterOptions.companyId;
-        if (filterOptions?.busType) where.busType = filterOptions.busType;
+        const qb = this.buildBusReadQuery();
 
-        const [entities, total] = await this.busRepo.findAndCount({
-            skip: (paginationOptions.page - 1) * paginationOptions.limit,
-            take: paginationOptions.limit,
-            where,
-            order: sortOptions?.reduce((acc, s) => ({ ...acc, [s.orderBy]: s.order }), {}),
-        })
+        if (filterOptions?.busName) qb.andWhere('bus.busName ILIKE :busName', { busName: `%${filterOptions.busName}%` });
+        if (filterOptions?.companyId) qb.andWhere('bus.busCompanyId = :companyId', { companyId: filterOptions.companyId });
+        if (filterOptions?.busType) qb.andWhere('bus.busType = :busType', { busType: filterOptions.busType });
+
+        const sortColumnMap: Partial<Record<keyof Bus, string>> = {
+            busId: 'bus.busId',
+            companyId: 'bus.busCompanyId',
+            busType: 'bus.busType',
+            busCode: 'bus.busCode',
+            busName: 'bus.busName',
+            description: 'bus.description',
+            licensePlate: 'bus.licensePlate',
+            createdAt: 'bus.createdAt',
+            latestVersionId: 'latestVersion.busVersionId',
+            latestVersionNo: 'latestVersion.versionNo',
+            layoutId: 'latestVersion.layoutId',
+        };
+
+        if (sortOptions?.length) {
+            sortOptions.forEach((sort, index) => {
+                const column = sortColumnMap[sort.orderBy] ?? 'bus.createdAt';
+                if (index === 0) {
+                    qb.orderBy(column, sort.order);
+                } else {
+                    qb.addOrderBy(column, sort.order);
+                }
+            });
+        } else {
+            qb.orderBy('bus.createdAt', 'DESC');
+        }
+
+        qb.skip((paginationOptions.page - 1) * paginationOptions.limit).take(paginationOptions.limit);
+
+        const [entities, total] = await qb.getManyAndCount();
 
         return {
             meta: {
@@ -186,7 +203,9 @@ export class BusesRepository {
     }
 
     async findById(id: string): Promise<NullableType<Bus>> {
-        const entity = await this.busRepo.findOne({ where: { busId: id } });
+        const entity = await this.buildBusReadQuery()
+            .where('bus.busId = :id', { id })
+            .getOne();
         return entity ? BusMapper.toDomain(entity) : null;
     }
 
@@ -195,7 +214,6 @@ export class BusesRepository {
             const busRepo = manager.getRepository(BusEntity);
             const versionRepo = manager.getRepository(BusVersionEntity);
             const bvlRepo = manager.getRepository(BusVersionLayoutEntity);
-            const seatLayoutRepo = manager.getRepository(SeatLayoutEntity);
             const busPayload = this.mapBusDtoToEntityPayload(dto);
 
             const entity = busRepo.create(busPayload);
@@ -203,13 +221,11 @@ export class BusesRepository {
             await this.createNextVersion(
                 versionRepo,
                 bvlRepo,
-                seatLayoutRepo,
                 saved.busId,
-                saved.busCompanyId,
                 {
                     status: BusVersionStatus.ACTIVE,
                 },
-                dto.seatLayout,
+                dto.seatLayoutId,
             );
 
             return BusMapper.toDomain(saved);
@@ -221,7 +237,6 @@ export class BusesRepository {
             const busRepo = manager.getRepository(BusEntity);
             const versionRepo = manager.getRepository(BusVersionEntity);
             const bvlRepo = manager.getRepository(BusVersionLayoutEntity);
-            const seatLayoutRepo = manager.getRepository(SeatLayoutEntity);
             const busPayload = this.mapBusDtoToEntityPayload(dto);
 
             if (Object.keys(busPayload).length > 0) {
@@ -236,11 +251,9 @@ export class BusesRepository {
             await this.createNextVersion(
                 versionRepo,
                 bvlRepo,
-                seatLayoutRepo,
                 id,
-                currentBus.busCompanyId,
                 undefined,
-                dto.seatLayout,
+                dto.seatLayoutId,
             );
         });
 
@@ -284,9 +297,7 @@ export class BusesRepository {
         const savedVersion = await this.createNextVersion(
             this.versionRepo,
             this.bvlRepo,
-            this.busRepo.manager.getRepository(SeatLayoutEntity),
             busId,
-            bus?.busCompanyId ?? '',
             {
                 status: BusVersionStatus.ACTIVE,
             },
@@ -309,9 +320,7 @@ export class BusesRepository {
         const saved = await this.createNextVersion(
             this.versionRepo,
             this.bvlRepo,
-            this.busRepo.manager.getRepository(SeatLayoutEntity),
             busId,
-            bus?.busCompanyId ?? '',
             {
                 ...dto,
                 status: dto.status ?? BusVersionStatus.ACTIVE,

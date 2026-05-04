@@ -41,12 +41,4 @@ export class TripStopEntity {
 
     @Column({ name: 'note', nullable: true })
     note?: string;
-
-    get id(): string {
-        return this.tripStopId;
-    }
-
-    get stopId(): string {
-        return this.routeStopId;
-    }
 }

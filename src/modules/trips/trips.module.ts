@@ -9,6 +9,7 @@ import { RoutesModule } from '@/modules/routes/routes.module';
 import { BookingSeatEntity } from '@/modules/bookings/entities/booking-seat.entity';
 import { SeatLayoutEntity } from '@/modules/seat-layouts/entities/seat-layout.entity';
 import { BusVersionLayoutEntity } from '@/modules/seat-layouts/entities/bus-version-layout.entity';
+import { TripSeatEntity } from './entities/trip-seat.entity';
 import { SeatLayoutsRepository } from '@/modules/seat-layouts/seat-layouts.repository';
 
 @Module({
@@ -19,6 +20,7 @@ import { SeatLayoutsRepository } from '@/modules/seat-layouts/seat-layouts.repos
             BookingSeatEntity,
             SeatLayoutEntity,
             BusVersionLayoutEntity,
+            TripSeatEntity,
         ]),
         RoutesModule,
     ],

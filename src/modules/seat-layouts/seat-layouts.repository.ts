@@ -116,6 +116,7 @@ export class SeatLayoutsRepository {
         const [entities, total] = await this.layoutRepo.findAndCount({
             skip: (paginationOptions.page - 1) * paginationOptions.limit,
             take: paginationOptions.limit,
+            relations: ['seats'],
             where,
         });
 

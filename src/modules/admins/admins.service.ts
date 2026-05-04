@@ -30,7 +30,11 @@ export class AdminsService {
     async findOne(id: string) {
         const admin = await this.adminsRepository.findById(id);
         if (!admin) throw new NotFoundException('Admin not found');
-        return admin;
+
+        const busCompanyAdmin = await this.busCompanyAdminRepository.findCompanyAdminByAdminId(admin.adminId);
+        const busCompanyId = busCompanyAdmin?.companyId ?? null;
+
+        return { ...admin, busCompanyId };
     }
 
     create(dto: CreateAdminDto) {

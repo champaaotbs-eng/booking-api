@@ -1,5 +1,6 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { BusCompanyEntity } from '@/modules/bus-companies/entities/bus-company.entity';
+import { SeatEntity } from './seat.entity';
 
 @Entity('seat_layouts')
 export class SeatLayoutEntity {
@@ -24,6 +25,9 @@ export class SeatLayoutEntity {
 
     @Column({ name: 'number_floors', type: 'int', nullable: false, default: 1 })
     numberFloors: number;
+
+    @OneToMany(() => SeatEntity, (seat) => seat.layout, { cascade: ['insert', 'update'] })
+    seats: SeatEntity[];
 
     @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
     createdAt: Date;

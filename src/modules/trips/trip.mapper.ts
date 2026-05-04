@@ -5,7 +5,7 @@ import { TripStopEntity } from './entities/trip-stop.entity';
 export class TripMapper {
     static toDomain(raw: TripEntity): Trip {
         const domain = new Trip();
-        domain.id = raw.id;
+        domain.tripId = raw.id;
         domain.routeId = raw.routeId;
         domain.busVersionId = raw.busVersionId;
         domain.busCompanyId = raw.busCompanyId;
@@ -25,8 +25,8 @@ export class TripMapper {
 
     static stopToDomain(raw: TripStopEntity): TripStop {
         return {
-            id: raw.id,
-            stopId: raw.id,
+            tripStopId: raw.tripStopId,
+            stopId: raw.routeStopId,
             routeStopId: raw.routeStopId,
             stopType: raw.stopType,
             pickupTime: raw.pickupTime,

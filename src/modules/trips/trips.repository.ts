@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { TripEntity, TripStatus } from './entities/trip.entity';
+import { TripEntity } from './entities/trip.entity';
 import { TripStopEntity } from './entities/trip-stop.entity';
+import { TripSeatEntity } from './entities/trip-seat.entity';
 import { TripMapper } from './trip.mapper';
 import { Trip } from './trip.domain';
 import { FilterTripDto, SortTripDto } from './dto/query-trip.dto';
-import { CreateTripDto, PatchTripStopsDto, UpdateTripDto } from './dto/trip.dto';
+import { CreateTripDto, UpdateTripDto } from './dto/trip.dto';
 import { IPaginationOptions } from '@/utils/types/pagination-options';
 import { PaginationResponseDto } from '@/utils/types/pagination-response.dto';
 import { NullableType } from '@/utils/types/nullable.type';
@@ -21,6 +22,12 @@ type TripStopSeed = {
     pickupTime?: Date;
     dropoffTime?: Date;
     note?: string;
+};
+
+type TripSeatSeed = {
+    seatId: string;
+    seatCode: string;
+    price: number;
 };
 
 const ACTIVE_BOOKING_STATUSES = [
@@ -39,9 +46,11 @@ export class TripsRepository {
         private readonly tripStopRepo: Repository<TripStopEntity>,
         @InjectRepository(BookingSeatEntity)
         private readonly bookingSeatRepo: Repository<BookingSeatEntity>,
+        @InjectRepository(TripSeatEntity)
+        private readonly tripSeatRepo: Repository<TripSeatEntity>,
     ) { }
 
-    private applyFilters(qb: any, filterOptions?: FilterTripDto | null, isPublic = false) {
+    private applyFilters(qb: any, filterOptions?: FilterTripDto | null) {
         if (filterOptions?.routeId) {
             qb.andWhere('trip.routeId = :routeId', { routeId: filterOptions.routeId });
         }
@@ -52,8 +61,6 @@ export class TripsRepository {
         }
         if (filterOptions?.status) {
             qb.andWhere('trip.status = :status', { status: filterOptions.status });
-        } else if (isPublic) {
-            qb.andWhere('trip.status = :status', { status: TripStatus.SCHEDULED });
         }
         if (filterOptions?.departureDate) {
             const date = new Date(filterOptions.departureDate);
@@ -96,9 +103,7 @@ export class TripsRepository {
                 { toLocationId: filterOptions.toLocationId },
             );
         }
-        if (isPublic) {
-            qb.andWhere('trip.isPublished = TRUE');
-        } else if (filterOptions?.isPublished !== undefined) {
+        if (filterOptions?.isPublished !== undefined) {
             qb.andWhere('trip.isPublished = :isPublished', {
                 isPublished: filterOptions.isPublished,
             });
@@ -109,7 +114,6 @@ export class TripsRepository {
         filterOptions: FilterTripDto | null | undefined,
         sortOptions: SortTripDto[] | null | undefined,
         paginationOptions: IPaginationOptions,
-        isPublic = false,
     ): Promise<PaginationResponseDto<Trip>> {
         const qb = this.tripRepo
             .createQueryBuilder('trip')
@@ -119,7 +123,7 @@ export class TripsRepository {
             .leftJoinAndSelect('tripStops.stop', 'routeStop')
             .leftJoinAndSelect('routeStop.station', 'stopLocation');
 
-        this.applyFilters(qb, filterOptions, isPublic);
+        this.applyFilters(qb, filterOptions);
 
         if (sortOptions?.length) {
             sortOptions.forEach((s) => qb.addOrderBy(`trip.${s.orderBy}`, s.order));
@@ -144,7 +148,7 @@ export class TripsRepository {
         };
     }
 
-    findPublicWithPagination({
+    findManyWithPagination({
         filterOptions,
         sortOptions,
         paginationOptions,
@@ -153,31 +157,7 @@ export class TripsRepository {
         sortOptions?: SortTripDto[] | null;
         paginationOptions: IPaginationOptions;
     }) {
-        return this.paginate(filterOptions, sortOptions, paginationOptions, true);
-    }
-
-    findCompanyWithPagination({
-        filterOptions,
-        sortOptions,
-        paginationOptions,
-    }: {
-        filterOptions?: FilterTripDto | null;
-        sortOptions?: SortTripDto[] | null;
-        paginationOptions: IPaginationOptions;
-    }) {
-        return this.paginate(filterOptions, sortOptions, paginationOptions, false);
-    }
-
-    findAdminWithPagination({
-        filterOptions,
-        sortOptions,
-        paginationOptions,
-    }: {
-        filterOptions?: FilterTripDto | null;
-        sortOptions?: SortTripDto[] | null;
-        paginationOptions: IPaginationOptions;
-    }) {
-        return this.paginate(filterOptions, sortOptions, paginationOptions, false);
+        return this.paginate(filterOptions, sortOptions, paginationOptions);
     }
 
     async findById(id: string): Promise<NullableType<Trip>> {
@@ -200,7 +180,11 @@ export class TripsRepository {
         return entity ? TripMapper.toDomain(entity) : null;
     }
 
-    async createWithStops(dto: CreateTripDto, stopSeeds: TripStopSeed[]): Promise<Trip> {
+    async createWithStopsAndSeats(
+        dto: CreateTripDto,
+        stopSeeds: TripStopSeed[],
+        seatSeeds: TripSeatSeed[],
+    ): Promise<Trip> {
         const trip = this.tripRepo.create({
             ...dto,
             departureTime: new Date(dto.departureTime),
@@ -224,6 +208,18 @@ export class TripsRepository {
             await this.tripStopRepo.save(stopEntities);
         }
 
+        if (seatSeeds.length) {
+            const tripSeatEntities = seatSeeds.map((s) =>
+                this.tripSeatRepo.create({
+                    tripId: savedTrip.tripId,
+                    seatId: s.seatId,
+                    seatCode: s.seatCode,
+                    price: s.price,
+                }),
+            );
+            await this.tripSeatRepo.save(tripSeatEntities);
+        }
+
         const created = await this.findById(savedTrip.tripId);
         return created as Trip;
     }
@@ -237,28 +233,24 @@ export class TripsRepository {
         return this.findById(id);
     }
 
-    async patchStops(id: string, dto: PatchTripStopsDto): Promise<NullableType<Trip>> {
-        for (const stop of dto.stops) {
-            await this.tripStopRepo.update(
-                { tripStopId: stop.stopId, tripId: id },
-                {
-                    stopType: stop.stopType,
-                    pickupTime: stop.pickupTime ? new Date(stop.pickupTime) : undefined,
-                    dropoffTime: stop.dropoffTime ? new Date(stop.dropoffTime) : undefined,
-                    note: stop.note,
-                    stopOrder: stop.sortOrder,
-                },
-            );
-        }
-        return this.findById(id);
-    }
-
-    async updateStatus(id: string, status: TripStatus, cancelReason?: string): Promise<void> {
-        await this.tripRepo.update({ tripId: id }, { status, cancelReason });
-    }
-
     async remove(id: string): Promise<void> {
         await this.tripRepo.delete({ tripId: id });
+    }
+
+    async replaceTripSeats(tripId: string, seatSeeds: TripSeatSeed[]): Promise<void> {
+        await this.tripSeatRepo.delete({ tripId });
+        if (!seatSeeds.length) {
+            return;
+        }
+        const entities = seatSeeds.map((s) =>
+            this.tripSeatRepo.create({
+                tripId,
+                seatId: s.seatId,
+                seatCode: s.seatCode,
+                price: s.price,
+            }),
+        );
+        await this.tripSeatRepo.save(entities);
     }
 
     async getBookedSeatIds(tripId: string): Promise<string[]> {
@@ -270,5 +262,14 @@ export class TripsRepository {
             .select('bs.seatId', 'seatId')
             .getRawMany();
         return rows.map((row: { seatId: string }) => row.seatId);
+    }
+
+    async getTripSeats(tripId: string): Promise<{ seatId: string; seatCode: string; price: number }[]> {
+        const rows = await this.tripSeatRepo
+            .createQueryBuilder('ts')
+            .where('ts.tripId = :tripId', { tripId })
+            .select(['ts.seatId AS "seatId"', 'ts.seatCode AS "seatCode"', 'ts.price AS "price"'])
+            .getRawMany();
+        return rows.map((r: any) => ({ seatId: r.seatId, seatCode: r.seatCode, price: Number(r.price) }));
     }
 }
