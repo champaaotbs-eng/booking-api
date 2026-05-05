@@ -1,6 +1,7 @@
 import { Trip, TripStop } from './trip.domain';
 import { TripEntity } from './entities/trip.entity';
 import { TripStopEntity } from './entities/trip-stop.entity';
+import { RouteStopType } from 'modules/routes/entities/route-stop.entity';
 
 export class TripMapper {
     static toDomain(raw: TripEntity): Trip {
@@ -18,7 +19,13 @@ export class TripMapper {
         domain.cancelReason = raw.cancelReason;
         domain.createdAt = raw.createdAt;
         if (raw.tripStops?.length) {
-            domain.tripStops = raw.tripStops.map(TripMapper.stopToDomain);
+            const stops = raw.tripStops.map(TripMapper.stopToDomain);
+            domain.tripStops = stops;
+            const sorted = [...stops].sort((a, b) => a.sortOrder - b.sortOrder);
+            const firstPickup = sorted.find(s => s.stopType === RouteStopType.PICKUP || s.stopType === RouteStopType.BOTH);
+            const lastDropoff = [...sorted].reverse().find(s => s.stopType === RouteStopType.DROPOFF || s.stopType === RouteStopType.BOTH);
+            if (firstPickup) domain.fromLocationName = firstPickup.locationName;
+            if (lastDropoff) domain.toLocationName = lastDropoff.locationName;
         }
         return domain;
     }
@@ -28,6 +35,9 @@ export class TripMapper {
             tripStopId: raw.tripStopId,
             stopId: raw.routeStopId,
             routeStopId: raw.routeStopId,
+            locationId: raw.stop?.stationId,
+            locationName: raw.stop?.station?.label,
+            locationAddress: raw.stop?.station?.address,
             stopType: raw.stopType,
             pickupTime: raw.pickupTime,
             dropoffTime: raw.dropoffTime,

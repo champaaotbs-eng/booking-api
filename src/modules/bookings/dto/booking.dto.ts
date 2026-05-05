@@ -1,4 +1,4 @@
-import { IsArray, IsEnum, IsNotEmpty, IsUUID, MinLength } from 'class-validator';
+import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 import { I18nTranslations } from '@/generated/i18n.generated';
 import { PaymentMethod } from '../entities/booking.entity';
@@ -22,6 +22,14 @@ export class CreateBookingDto {
 
     @IsEnum(PaymentMethod)
     paymentMethod: PaymentMethod;
+
+    @IsOptional()
+    @IsString()
+    passengerName?: string;
+
+    @IsOptional()
+    @IsString()
+    passengerPhone?: string;
 }
 
 export class CancelBookingDto {

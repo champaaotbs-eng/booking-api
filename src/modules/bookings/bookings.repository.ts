@@ -266,6 +266,8 @@ export class BookingsRepository {
                 paymentMethod: dto.paymentMethod,
                 status,
                 expiresAt,
+                passengerName: dto.passengerName,
+                passengerPhone: dto.passengerPhone,
             });
             const savedBooking = await manager.save(BookingEntity, booking);
 

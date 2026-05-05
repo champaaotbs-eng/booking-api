@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { BookingsService } from './bookings.service';
-import { UserInfo } from '@/decorator/customize.decorator';
+import { Public, UserInfo } from '@/decorator/customize.decorator';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterBookingDto, SortBookingDto } from './dto/query-booking.dto';
 import { CreateBookingDto } from './dto/booking.dto';
@@ -9,9 +9,10 @@ import { CreateBookingDto } from './dto/booking.dto';
 export class BookingsController {
     constructor(private readonly bookingsService: BookingsService) { }
 
+    @Public()
     @Post('bookings')
-    create(@UserInfo() user: { userId: string }, @Body() dto: CreateBookingDto) {
-        return this.bookingsService.create(user.userId, dto);
+    create(@UserInfo() user: { userId: string } | undefined, @Body() dto: CreateBookingDto) {
+        return this.bookingsService.create(user?.userId ?? null, dto);
     }
 
     @Post('company/bookings')

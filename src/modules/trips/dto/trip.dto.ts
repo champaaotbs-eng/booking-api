@@ -69,4 +69,8 @@ export class UpdateTripDto extends PartialType(CreateTripDto) {
     @IsOptional()
     @IsEnum(TripStatus)
     status?: TripStatus;
+
+    @IsOptional()
+    @IsString()
+    cancelReason?: string;
 }

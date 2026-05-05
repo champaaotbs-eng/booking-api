@@ -54,6 +54,12 @@ export class BookingEntity {
     @Column({ name: 'status', default: BookingStatus.PENDING_PAYMENT })
     status: BookingStatus;
 
+    @Column({ name: 'passenger_name', nullable: true })
+    passengerName?: string;
+
+    @Column({ name: 'passenger_phone', nullable: true })
+    passengerPhone?: string;
+
     @Column({ name: 'expires_at', type: 'timestamptz', nullable: true })
     expiresAt?: Date;
 

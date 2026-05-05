@@ -10,6 +10,7 @@ import { Response } from 'express';
 import { MailService } from 'modules/mail/mail.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { RegisterDto } from './dto/register.dto';
 import { OtpService } from 'modules/otp/otp.service';
 import { AdminsService } from 'modules/admins/admins.service';
 import { Admin } from 'modules/admins/admin.domain';
@@ -26,6 +27,18 @@ export class AuthService {
     private mailService: MailService,
     private otpService: OtpService,
   ) { }
+
+  async register(dto: RegisterDto, response: Response) {
+    const user = await this.usersService.create({
+      fullName: dto.fullName,
+      email: dto.email,
+      password: dto.password,
+      phone: dto.phone,
+      address: dto.address ?? '',
+    } as any)
+
+    return this.login(user as any, response)
+  }
 
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.usersService.findByEmail(email);

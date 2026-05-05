@@ -9,6 +9,7 @@ import { User } from 'modules/users/user.domain';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { AdminAuthGuard } from './guard/admin-auth.guard';
+import { RegisterDto } from './dto/register.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -17,6 +18,12 @@ export class AuthController {
     private readonly i18nService: I18nService<I18nTranslations>
   ) { }
 
+
+  @Public()
+  @Post('user/register')
+  register(@Body() registerDto: RegisterDto, @Res({ passthrough: true }) response: Response) {
+    return this.authService.register(registerDto, response)
+  }
 
   @UseGuards(LocalAuthGuard)
   @Public()

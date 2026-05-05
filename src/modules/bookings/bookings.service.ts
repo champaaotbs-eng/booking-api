@@ -48,7 +48,7 @@ export class BookingsService {
         return booking;
     }
 
-    create(userId: string, dto: CreateBookingDto) {
+    create(userId: string | null, dto: CreateBookingDto) {
         return this.bookingsRepository.create(userId, dto);
     }
 

@@ -3,17 +3,20 @@ import { TripsService } from './trips.service';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterTripDto, SortTripDto } from './dto/query-trip.dto';
 import { CreateTripDto, UpdateTripDto } from './dto/trip.dto';
+import { Public } from '@/decorator/customize.decorator';
 
 @Controller('trips')
 export class TripsController {
     constructor(private readonly tripsService: TripsService) { }
 
     @Get('')
+    @Public()
     findAll(@Query() query: QueryDto<FilterTripDto, SortTripDto>) {
         return this.tripsService.findAll(query);
     }
 
     @Get('/:id')
+    @Public()
     findOne(@Param('id') id: string) {
         return this.tripsService.findOne(id);
     }
