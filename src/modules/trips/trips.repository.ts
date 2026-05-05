@@ -119,6 +119,8 @@ export class TripsRepository {
             .createQueryBuilder('trip')
             .leftJoinAndSelect('trip.route', 'route')
             .leftJoinAndSelect('trip.busCompany', 'busCompany')
+            .leftJoinAndSelect('trip.busVersion', 'busVersion')
+            .leftJoinAndSelect('busVersion.bus', 'bus')
             .leftJoinAndSelect('trip.tripStops', 'tripStops')
             .leftJoinAndSelect('tripStops.stop', 'routeStop')
             .leftJoinAndSelect('routeStop.station', 'stopLocation');
@@ -167,6 +169,7 @@ export class TripsRepository {
                 'route',
                 'busCompany',
                 'busVersion',
+                'busVersion.bus',
                 'tripStops',
                 'tripStops.stop',
                 'tripStops.stop.station',
@@ -271,5 +274,15 @@ export class TripsRepository {
             .select(['ts.seatId AS "seatId"', 'ts.seatCode AS "seatCode"', 'ts.price AS "price"'])
             .getRawMany();
         return rows.map((r: any) => ({ seatId: r.seatId, seatCode: r.seatCode, price: Number(r.price) }));
+    }
+
+    async hasActiveBookings(tripId: string): Promise<boolean> {
+        const count = await this.bookingSeatRepo
+            .createQueryBuilder('bs')
+            .innerJoin('bs.booking', 'b')
+            .where('b.tripId = :tripId', { tripId })
+            .andWhere('b.status IN (:...statuses)', { statuses: ACTIVE_BOOKING_STATUSES })
+            .getCount();
+        return count > 0;
     }
 }

@@ -119,6 +119,12 @@ export class TripsService {
     async remove(id: string) {
         const trip = await this.tripsRepository.findById(id);
         if (!trip) throw new NotFoundException('trip_not_found');
+        
+        const hasBookings = await this.tripsRepository.hasActiveBookings(id);
+        if (hasBookings) {
+            throw new BadRequestException('trip_has_bookings_cannot_delete');
+        }
+        
         await this.tripsRepository.remove(id);
         return { removed: true };
     }

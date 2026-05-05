@@ -11,6 +11,9 @@ export class TripMapper {
         domain.busVersionId = raw.busVersionId;
         domain.busCompanyId = raw.busCompanyId;
         domain.busCompanyName = raw.busCompany?.name;
+        domain.busName = raw.busVersion?.bus?.busName;
+        domain.busLicensePlate = raw.busVersion?.bus?.licensePlate;
+        domain.driverPhone = raw.busVersion?.driverPhone;
         domain.departureTime = raw.departureTime;
         domain.arrivalTime = raw.arrivalTime;
         domain.basePrice = Number(raw.basePrice);

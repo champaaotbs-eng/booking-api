@@ -10,6 +10,9 @@ export class Trip {
     @Allow() busVersionId?: string;
     @Allow() busCompanyId: string;
     @Allow() busCompanyName?: string;
+    @Allow() busName?: string;
+    @Allow() busLicensePlate?: string;
+    @Allow() driverPhone?: string;
     @Allow() departureTime: Date;
     @Allow() arrivalTime: Date;
     @Allow() basePrice: number;
@@ -18,6 +21,18 @@ export class Trip {
     @Allow() cancelReason?: string;
     @Allow() createdAt: Date;
     @Allow() tripStops?: TripStop[];
+    @Allow() seatAvailability?: SeatAvailability[];
+}
+
+export class SeatAvailability {
+    @Allow() seatId: string;
+    @Allow() seatCode: string;
+    @Allow() seatType: string;
+    @Allow() row: number;
+    @Allow() col: number;
+    @Allow() floor: number;
+    @Allow() price: number;
+    @Allow() isAvailable: boolean;
 }
 
 export class TripStop {
