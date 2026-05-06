@@ -103,6 +103,83 @@ export class TripsRepository {
                 { toLocationId: filterOptions.toLocationId },
             );
         }
+        // Free-text search by station address: resolve stations by address, then match route stops.
+        const fromTerm = filterOptions?.fromLocation?.trim();
+        const toTerm = filterOptions?.toLocation?.trim();
+
+        if (fromTerm) {
+            qb.andWhere(
+                `EXISTS (
+                    SELECT 1
+                    FROM route_stops rs_from
+                    WHERE rs_from.route_id = route.route_id
+                      AND rs_from.stop_type IN ('PICKUP', 'BOTH')
+                      AND rs_from.is_active = true
+                      AND rs_from.station_id IN (
+                        SELECT st.station_id
+                        FROM stations st
+                        WHERE st.deleted_at IS NULL
+                          AND st.is_active = true
+                          AND st.address ILIKE :fromTerm
+                      )
+                )`,
+                { fromTerm: `%${fromTerm}%` },
+            );
+        }
+        if (toTerm) {
+            qb.andWhere(
+                `EXISTS (
+                    SELECT 1
+                    FROM route_stops rs_to
+                    WHERE rs_to.route_id = route.route_id
+                      AND rs_to.stop_type IN ('DROPOFF', 'BOTH')
+                      AND rs_to.is_active = true
+                      AND rs_to.station_id IN (
+                        SELECT st.station_id
+                        FROM stations st
+                        WHERE st.deleted_at IS NULL
+                          AND st.is_active = true
+                          AND st.address ILIKE :toTerm
+                      )
+                )`,
+                { toTerm: `%${toTerm}%` },
+            );
+        }
+        // When both text terms are provided, ensure pickup and dropoff stops exist in the same route
+        // and the pickup stop happens before the dropoff stop.
+        if (fromTerm && toTerm) {
+            qb.andWhere(
+                `EXISTS (
+                    SELECT 1
+                    FROM route_stops rs_p
+                    INNER JOIN route_stops rs_d ON rs_d.route_id = rs_p.route_id
+                    WHERE rs_p.route_id = route.route_id
+                      AND rs_p.stop_type IN ('PICKUP', 'BOTH')
+                      AND rs_p.is_active = true
+                      AND rs_p.station_id IN (
+                        SELECT st.station_id
+                        FROM stations st
+                        WHERE st.deleted_at IS NULL
+                          AND st.is_active = true
+                          AND st.address ILIKE :fromTerm2
+                      )
+                      AND rs_d.stop_type IN ('DROPOFF', 'BOTH')
+                      AND rs_d.is_active = true
+                      AND rs_d.station_id IN (
+                        SELECT st.station_id
+                        FROM stations st
+                        WHERE st.deleted_at IS NULL
+                          AND st.is_active = true
+                          AND st.address ILIKE :toTerm2
+                      )
+                      AND rs_p.stop_order < rs_d.stop_order
+                )`,
+                {
+                    fromTerm2: `%${fromTerm}%`,
+                    toTerm2: `%${toTerm}%`,
+                },
+            );
+        }
         if (filterOptions?.isPublished !== undefined) {
             qb.andWhere('trip.isPublished = :isPublished', {
                 isPublished: filterOptions.isPublished,
@@ -228,8 +305,9 @@ export class TripsRepository {
     }
 
     async update(id: string, dto: UpdateTripDto): Promise<NullableType<Trip>> {
+        const { seatPrices, ...updateDto } = dto as UpdateTripDto & { seatPrices?: unknown };
         await this.tripRepo.update({ tripId: id }, {
-            ...dto,
+            ...updateDto,
             departureTime: dto.departureTime ? new Date(dto.departureTime) : undefined,
             arrivalTime: dto.arrivalTime ? new Date(dto.arrivalTime) : undefined,
         });

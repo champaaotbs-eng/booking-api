@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{title}}</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 32px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .header { background: #2563eb; color: #fff; padding: 28px 32px; text-align: center; }
+    .header h1 { margin: 0; font-size: 22px; }
+    .header p { margin: 6px 0 0; opacity: 0.85; font-size: 14px; }
+    .body { padding: 28px 32px; }
+    .booking-code { text-align: center; background: #eff6ff; border: 2px dashed #93c5fd; border-radius: 10px; padding: 18px; margin: 20px 0; }
+    .booking-code .label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; }
+    .booking-code .code { font-size: 32px; font-weight: 800; color: #2563eb; letter-spacing: 4px; font-family: monospace; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+    .info-item .label { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .info-item .value { font-size: 14px; font-weight: 600; color: #111827; }
+    .seats { background: #f9fafb; border-radius: 8px; padding: 14px 18px; margin: 16px 0; }
+    .seats .label { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
+    .seat-badge { display: inline-block; background: #dbeafe; color: #1d4ed8; border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 700; margin: 2px; }
+    .total { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 16px; }
+    .total .label { font-size: 14px; color: #6b7280; }
+    .total .amount { font-size: 20px; font-weight: 800; color: #2563eb; }
+    .footer { background: #f9fafb; padding: 20px 32px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; }
+    .qr-section { text-align: center; margin: 20px 0; }
+    .qr-section img { border-radius: 10px; border: 1px solid #e5e7eb; }
+    .qr-section p { font-size: 12px; color: #6b7280; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎫 {{title}}</h1>
+      <p>{{app_name}}</p>
+    </div>
+    <div class="body">
+      <p>Xin chào <strong>{{passengerName}}</strong>,</p>
+      <p>Vé xe của bạn đã được xác nhận. Vui lòng xuất trình mã đặt vé khi lên xe.</p>
+
+      <div class="booking-code">
+        <div class="label">Mã đặt vé</div>
+        <div class="code">{{bookingCode}}</div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="label">Tuyến đường</div>
+          <div class="value">{{fromLocation}} → {{toLocation}}</div>
+        </div>
+        <div class="info-item">
+          <div class="label">Ngày khởi hành</div>
+          <div class="value">{{departureDate}}</div>
+        </div>
+        <div class="info-item">
+          <div class="label">Giờ khởi hành</div>
+          <div class="value">{{departureTime}}</div>
+        </div>
+        <div class="info-item">
+          <div class="label">Nhà xe</div>
+          <div class="value">{{busCompanyName}}</div>
+        </div>
+        <div class="info-item">
+          <div class="label">Hành khách</div>
+          <div class="value">{{passengerName}}</div>
+        </div>
+        <div class="info-item">
+          <div class="label">Số điện thoại</div>
+          <div class="value">{{passengerPhone}}</div>
+        </div>
+      </div>
+
+      <div class="seats">
+        <div class="label">Ghế đã đặt</div>
+        {{#each seatCodes}}
+          <span class="seat-badge">{{this}}</span>
+        {{/each}}
+      </div>
+
+      <div class="total">
+        <span class="label">Tổng tiền</span>
+        <span class="amount">{{totalAmount}}</span>
+      </div>
+
+      <div class="qr-section">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?data={{bookingCode}}&size=160x160&margin=10" alt="QR Code" width="160" height="160" />
+        <p>Quét mã QR để xác nhận vé khi lên xe</p>
+      </div>
+    </div>
+    <div class="footer">
+      <p>© {{currentYear}} {{app_name}}. Cảm ơn bạn đã sử dụng dịch vụ.</p>
+      <p>Email này được gửi tự động, vui lòng không trả lời.</p>
+    </div>
+  </div>
+</body>
+</html>

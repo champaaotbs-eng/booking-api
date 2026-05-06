@@ -8,6 +8,8 @@ import { BookingsService } from './bookings.service';
 import { BookingsController } from './bookings.controller';
 import { BookingsRepository } from './bookings.repository';
 import { PaymentEntity } from '@/modules/payments/entities/payment.entity';
+import { MailModule } from '@/modules/mail/mail.module';
+import { UsersModule } from '@/modules/users/users.module';
 
 @Module({
     imports: [
@@ -18,6 +20,8 @@ import { PaymentEntity } from '@/modules/payments/entities/payment.entity';
             TripStopEntity,
             PaymentEntity,
         ]),
+        MailModule,
+        UsersModule,
     ],
     controllers: [BookingsController],
     providers: [BookingsService, BookingsRepository],

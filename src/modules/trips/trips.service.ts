@@ -119,12 +119,12 @@ export class TripsService {
     async remove(id: string) {
         const trip = await this.tripsRepository.findById(id);
         if (!trip) throw new NotFoundException('trip_not_found');
-        
+
         const hasBookings = await this.tripsRepository.hasActiveBookings(id);
         if (hasBookings) {
             throw new BadRequestException('trip_has_bookings_cannot_delete');
         }
-        
+
         await this.tripsRepository.remove(id);
         return { removed: true };
     }
@@ -159,6 +159,15 @@ export class TripsService {
 
         const seatIdSet = new Set(seats.map((s) => s.seatId));
         if (seatPrices?.length) {
+            const seenSeatIds = new Set<string>();
+            const duplicate = seatPrices.find((sp) => {
+                if (seenSeatIds.has(sp.seatId)) return true;
+                seenSeatIds.add(sp.seatId);
+                return false;
+            });
+            if (duplicate) {
+                throw new BadRequestException('duplicate_trip_seat_price');
+            }
             const invalidSeat = seatPrices.find((sp) => !seatIdSet.has(sp.seatId));
             if (invalidSeat) {
                 throw new BadRequestException('invalid_trip_seat');

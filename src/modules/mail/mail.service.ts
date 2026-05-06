@@ -56,6 +56,35 @@ export class MailService {
         })
     }
 
+    async sendTicket(mailData: MailData<{
+        bookingCode: string;
+        passengerName: string;
+        passengerPhone: string;
+        fromLocation: string;
+        toLocation: string;
+        departureDate: string;
+        departureTime: string;
+        busCompanyName: string;
+        seatCodes: string[];
+        totalAmount: string;
+    }>) {
+        const app_name = this.configService.get('app.name', { infer: true });
+        const title = 'Vé xe của bạn đã được xác nhận';
+
+        await this.mailerService.sendMail({
+            to: mailData.to,
+            subject: `${title} - ${mailData.data.bookingCode}`,
+            text: `Mã đặt vé: ${mailData.data.bookingCode}`,
+            templatePath: path.join(process.cwd(), 'src', 'modules', 'mail', 'mail-templates', 'ticket.template.hbs'),
+            context: {
+                title,
+                app_name,
+                currentYear: dayjs().year(),
+                ...mailData.data,
+            },
+        });
+    }
+
     async forgotPassword(mailData: MailData<{ otp: string }>) {
         let title: MaybeType<string>;
         let text1: MaybeType<string>;

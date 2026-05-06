@@ -7,8 +7,14 @@ export class FilterTripDto {
     status?: TripStatus;
     /** ISO date string — filter trips departing on this date */
     departureDate?: string;
+    /** Exact station UUID for origin */
     fromLocationId?: string;
+    /** Exact station UUID for destination */
     toLocationId?: string;
+    /** Free-text search against station address for origin */
+    fromLocation?: string;
+    /** Free-text search against station address for destination */
+    toLocation?: string;
     isPublished?: boolean;
 }
 
