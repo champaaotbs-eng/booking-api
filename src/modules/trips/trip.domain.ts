@@ -2,11 +2,21 @@ import { Allow } from 'class-validator';
 import { TripStatus } from './entities/trip.entity';
 import { RouteStopType } from 'modules/routes/entities/route-stop.entity';
 
+export class TripLocation {
+    @Allow() stationId: string;
+    @Allow() label: string;
+    @Allow() address: string;
+    @Allow() latitude: number;
+    @Allow() longitude: number;
+}
+
 export class Trip {
     @Allow() tripId: string;
     @Allow() routeId: string;
     @Allow() fromLocationName?: string;
     @Allow() toLocationName?: string;
+    @Allow() fromLocation?: TripLocation;
+    @Allow() toLocation?: TripLocation;
     @Allow() busVersionId?: string;
     @Allow() busCompanyId: string;
     @Allow() busCompanyName?: string;

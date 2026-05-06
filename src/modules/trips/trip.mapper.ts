@@ -1,7 +1,6 @@
-import { Trip, TripStop } from './trip.domain';
+import { Trip, TripLocation, TripStop } from './trip.domain';
 import { TripEntity } from './entities/trip.entity';
 import { TripStopEntity } from './entities/trip-stop.entity';
-import { RouteStopType } from 'modules/routes/entities/route-stop.entity';
 
 export class TripMapper {
     static toDomain(raw: TripEntity): Trip {
@@ -24,11 +23,31 @@ export class TripMapper {
         if (raw.tripStops?.length) {
             const stops = raw.tripStops.map(TripMapper.stopToDomain);
             domain.tripStops = stops;
-            const sorted = [...stops].sort((a, b) => a.sortOrder - b.sortOrder);
-            const firstPickup = sorted.find(s => s.stopType === RouteStopType.PICKUP || s.stopType === RouteStopType.BOTH);
-            const lastDropoff = [...sorted].reverse().find(s => s.stopType === RouteStopType.DROPOFF || s.stopType === RouteStopType.BOTH);
-            if (firstPickup) domain.fromLocationName = firstPickup.locationName;
-            if (lastDropoff) domain.toLocationName = lastDropoff.locationName;
+            const sortedRaw = [...raw.tripStops].sort((a, b) => a.stopOrder - b.stopOrder);
+            const firstStop = sortedRaw[0];
+            const lastStop = sortedRaw[sortedRaw.length - 1];
+            if (firstStop?.stop?.station) {
+                const station = firstStop.stop.station;
+                domain.fromLocationName = station.label;
+                domain.fromLocation = {
+                    stationId: station.stationId,
+                    label: station.label,
+                    address: station.address,
+                    latitude: Number(station.latitude),
+                    longitude: Number(station.longitude),
+                };
+            }
+            if (lastStop?.stop?.station) {
+                const station = lastStop.stop.station;
+                domain.toLocationName = station.label;
+                domain.toLocation = {
+                    stationId: station.stationId,
+                    label: station.label,
+                    address: station.address,
+                    latitude: Number(station.latitude),
+                    longitude: Number(station.longitude),
+                };
+            }
         }
         return domain;
     }
