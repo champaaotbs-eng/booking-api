@@ -1,5 +1,32 @@
+import { Transform } from 'class-transformer';
+import { IsDateString, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { Trip } from '../trip.domain';
 import { TripStatus } from '../entities/trip.entity';
+
+export class CustomerSearchTripsDto {
+    @IsDateString()
+    date: string;
+
+    @IsOptional()
+    @IsString()
+    from?: string;
+
+    @IsOptional()
+    @IsString()
+    to?: string;
+
+    @IsOptional()
+    @Transform(({ value }) => Number(value))
+    @IsInt()
+    @Min(1)
+    page?: number = 1;
+
+    @IsOptional()
+    @Transform(({ value }) => Number(value))
+    @IsInt()
+    @Min(1)
+    limit?: number = 20;
+}
 
 export class FilterTripDto {
     routeId?: string;

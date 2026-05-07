@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { TripsService } from './trips.service';
 import { QueryDto } from '@/utils/types/query.dto';
-import { FilterTripDto, SortTripDto } from './dto/query-trip.dto';
+import { CustomerSearchTripsDto, FilterTripDto, SortTripDto } from './dto/query-trip.dto';
 import { CreateTripDto, UpdateTripDto } from './dto/trip.dto';
 import { Public } from '@/decorator/customize.decorator';
 
@@ -13,6 +13,12 @@ export class TripsController {
     @Public()
     findAll(@Query() query: QueryDto<FilterTripDto, SortTripDto>) {
         return this.tripsService.findAll(query);
+    }
+
+    @Get('/search')
+    @Public()
+    search(@Query() dto: CustomerSearchTripsDto) {
+        return this.tripsService.searchForCustomer(dto);
     }
 
     @Get('/:id')

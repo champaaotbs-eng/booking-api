@@ -76,12 +76,12 @@ export class TripsRepository {
                 `EXISTS (
                     SELECT 1
                     FROM route_stops rs
-                    WHERE rs.route_id = route.route_id
+                    WHERE rs.route_id = trip.route_id
                       AND rs.station_id = :fromLocationId
                       AND rs.stop_order = (
                         SELECT MIN(rs_min.stop_order)
                         FROM route_stops rs_min
-                        WHERE rs_min.route_id = route.route_id
+                        WHERE rs_min.route_id = trip.route_id
                       )
                 )`,
                 { fromLocationId: filterOptions.fromLocationId },
@@ -92,12 +92,12 @@ export class TripsRepository {
                 `EXISTS (
                     SELECT 1
                     FROM route_stops rs
-                    WHERE rs.route_id = route.route_id
+                    WHERE rs.route_id = trip.route_id
                       AND rs.station_id = :toLocationId
                       AND rs.stop_order = (
                         SELECT MAX(rs_max.stop_order)
                         FROM route_stops rs_max
-                        WHERE rs_max.route_id = route.route_id
+                        WHERE rs_max.route_id = trip.route_id
                       )
                 )`,
                 { toLocationId: filterOptions.toLocationId },
@@ -112,7 +112,7 @@ export class TripsRepository {
                 `EXISTS (
                     SELECT 1
                     FROM route_stops rs_from
-                    WHERE rs_from.route_id = route.route_id
+                    WHERE rs_from.route_id = trip.route_id
                       AND rs_from.stop_type IN ('PICKUP', 'BOTH')
                       AND rs_from.is_active = true
                       AND rs_from.station_id IN (
@@ -131,7 +131,7 @@ export class TripsRepository {
                 `EXISTS (
                     SELECT 1
                     FROM route_stops rs_to
-                    WHERE rs_to.route_id = route.route_id
+                    WHERE rs_to.route_id = trip.route_id
                       AND rs_to.stop_type IN ('DROPOFF', 'BOTH')
                       AND rs_to.is_active = true
                       AND rs_to.station_id IN (
@@ -145,41 +145,7 @@ export class TripsRepository {
                 { toTerm: `%${toTerm}%` },
             );
         }
-        // When both text terms are provided, ensure pickup and dropoff stops exist in the same route
-        // and the pickup stop happens before the dropoff stop.
-        if (fromTerm && toTerm) {
-            qb.andWhere(
-                `EXISTS (
-                    SELECT 1
-                    FROM route_stops rs_p
-                    INNER JOIN route_stops rs_d ON rs_d.route_id = rs_p.route_id
-                    WHERE rs_p.route_id = route.route_id
-                      AND rs_p.stop_type IN ('PICKUP', 'BOTH')
-                      AND rs_p.is_active = true
-                      AND rs_p.station_id IN (
-                        SELECT st.station_id
-                        FROM stations st
-                        WHERE st.deleted_at IS NULL
-                          AND st.is_active = true
-                          AND st.address ILIKE :fromTerm2
-                      )
-                      AND rs_d.stop_type IN ('DROPOFF', 'BOTH')
-                      AND rs_d.is_active = true
-                      AND rs_d.station_id IN (
-                        SELECT st.station_id
-                        FROM stations st
-                        WHERE st.deleted_at IS NULL
-                          AND st.is_active = true
-                          AND st.address ILIKE :toTerm2
-                      )
-                      AND rs_p.stop_order < rs_d.stop_order
-                )`,
-                {
-                    fromTerm2: `%${fromTerm}%`,
-                    toTerm2: `%${toTerm}%`,
-                },
-            );
-        }
+
         if (filterOptions?.isPublished !== undefined) {
             qb.andWhere('trip.isPublished = :isPublished', {
                 isPublished: filterOptions.isPublished,
@@ -216,6 +182,8 @@ export class TripsRepository {
             .take(paginationOptions.limit)
             .getMany();
 
+
+        console.log('check entities', entities);
         return {
             meta: {
                 page: paginationOptions.page,
@@ -225,6 +193,72 @@ export class TripsRepository {
             },
             result: entities.map(TripMapper.toDomain),
         };
+    }
+
+    async searchForCustomer(params: {
+        date: string;
+        from?: string;
+        to?: string;
+        isPublished?: boolean;
+    }): Promise<Trip[]> {
+        const qb = this.tripRepo
+            .createQueryBuilder('trip')
+            .leftJoinAndSelect('trip.route', 'route')
+            .leftJoinAndSelect('trip.busCompany', 'busCompany')
+            .leftJoinAndSelect('trip.busVersion', 'busVersion')
+            .leftJoinAndSelect('busVersion.bus', 'bus')
+            .leftJoinAndSelect('trip.tripStops', 'tripStops')
+            .leftJoinAndSelect('tripStops.stop', 'routeStop')
+            .leftJoinAndSelect('routeStop.station', 'stopLocation');
+
+        const date = new Date(params.date);
+        const nextDay = new Date(date);
+        nextDay.setDate(nextDay.getDate() + 1);
+        qb.andWhere('trip.departureTime >= :from AND trip.departureTime < :to', {
+            from: date,
+            to: nextDay,
+        });
+
+        const fromTerm = params.from?.trim();
+        if (fromTerm) {
+            qb.andWhere(
+                `EXISTS (
+                    SELECT 1
+                    FROM route_stops rs_from
+                    INNER JOIN stations st_from ON st_from.station_id = rs_from.station_id
+                    WHERE rs_from.route_id = trip.route_id
+                      AND rs_from.stop_type = 'PICKUP'
+                      AND st_from.address ILIKE :fromTerm
+                )`,
+                { fromTerm: `%${fromTerm}%` },
+            );
+        }
+
+        const toTerm = params.to?.trim();
+        if (toTerm) {
+            qb.andWhere(
+                `EXISTS (
+                    SELECT 1
+                    FROM route_stops rs_to
+                    INNER JOIN stations st_to ON st_to.station_id = rs_to.station_id
+                    WHERE rs_to.route_id = trip.route_id
+                      AND rs_to.stop_type = 'DROPOFF'
+                      AND st_to.address ILIKE :toTerm
+                )`,
+                { toTerm: `%${toTerm}%` },
+            );
+        }
+
+        if (params.isPublished !== undefined) {
+            qb.andWhere('trip.isPublished = :isPublished', {
+                isPublished: params.isPublished,
+            });
+        }
+
+        qb.orderBy('trip.departureTime', 'ASC');
+
+        const entities = await qb.getMany();
+        return entities.map(TripMapper.toDomain);
     }
 
     findManyWithPagination({

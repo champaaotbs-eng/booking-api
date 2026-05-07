@@ -7,7 +7,7 @@ import { TripsRepository } from './trips.repository';
 import { SeatLayoutsRepository } from '@/modules/seat-layouts/seat-layouts.repository';
 import { RoutesRepository } from '@/modules/routes/routes.repository';
 import { QueryDto } from '@/utils/types/query.dto';
-import { FilterTripDto, SortTripDto } from './dto/query-trip.dto';
+import { CustomerSearchTripsDto, FilterTripDto, SortTripDto } from './dto/query-trip.dto';
 import { CreateTripDto, SeatPriceDto, UpdateTripDto } from './dto/trip.dto';
 import { RouteStopType } from 'modules/routes/entities/route-stop.entity';
 
@@ -24,6 +24,15 @@ export class TripsService {
             filterOptions: query.filters,
             sortOptions: query.sort,
             paginationOptions: { page: query.page || 1, limit: query.limit || 10 },
+        });
+    }
+
+    searchForCustomer(dto: CustomerSearchTripsDto) {
+        return this.tripsRepository.searchForCustomer({
+            date: dto.date,
+            from: dto.from,
+            to: dto.to,
+            isPublished: true,
         });
     }
 
