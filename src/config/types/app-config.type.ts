@@ -1,7 +1,8 @@
 export type AppConfig = {
     nodeEnv?: string;
     name: string;
-    frontendDomain?: string;
+    adminPortalDomain?: string;
+    customerPortalDomain?: string;
     backendDomain: string;
     port: number;
     timeZone: string;

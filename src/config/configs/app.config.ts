@@ -30,7 +30,11 @@ class EnvironmentVariablesValidator {
 
     @IsUrl({ require_tld: false })
     @IsOptional()
-    FRONTEND_DOMAIN: string;
+    ADMIN_PORTAL_DOMAIN: string;
+
+    @IsUrl({ require_tld: false })
+    @IsOptional()
+    CUSTOMER_PORTAL_DOMAIN: string;
 
     @IsUrl({ require_tld: false })
     @IsOptional()
@@ -54,7 +58,8 @@ export default registerAs<AppConfig>('app', () => {
         timeZone: process.env.TZ,
         cacheTTL: process.env.CACHE_TTL ? parseInt(process.env.CACHE_TTL, 10) * 1000 : 5000 * 1000,
         name: process.env.APP_NAME || 'app',
-        frontendDomain: process.env.FRONTEND_DOMAIN,
+        adminPortalDomain: process.env.ADMIN_PORTAL_DOMAIN,
+        customerPortalDomain: process.env.CUSTOMER_PORTAL_DOMAIN,
         backendDomain: process.env.BACKEND_DOMAIN ?? 'http://localhost',
         port: process.env.APP_PORT
             ? parseInt(process.env.APP_PORT, 10)
