@@ -74,6 +74,9 @@ export class PaymentEntity {
     @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
     createdAt: Date;
 
+    @Column({ name: 'expires_at', type: 'timestamptz', nullable: true })
+    expiresAt?: Date;
+
     @Column({ name: 'completed_at', type: 'timestamptz', nullable: true })
     completedAt?: Date;
 

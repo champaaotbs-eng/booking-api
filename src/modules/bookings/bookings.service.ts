@@ -4,6 +4,7 @@ import { QueryDto } from '@/utils/types/query.dto';
 import { FilterBookingDto, SortBookingDto } from './dto/query-booking.dto';
 import { CreateBookingDto } from './dto/booking.dto';
 import { BookingStatus } from './entities/booking.entity';
+import { PaymentStatus } from '@/modules/payments/entities/payment.entity';
 import { MailService } from '@/modules/mail/mail.service';
 import { UsersService } from '@/modules/users/users.service';
 import dayjs from 'dayjs';
@@ -132,7 +133,25 @@ export class BookingsService {
             return { success: true, message: 'already_processed' };
         }
 
+        if (booking.expiresAt && booking.expiresAt.getTime() < Date.now()) {
+            await this.bookingsRepository.updateStatus(booking.id, BookingStatus.EXPIRED);
+            const expiredPayment = await this.bookingsRepository.findLatestPaymentByBookingId(booking.id);
+            if (expiredPayment && expiredPayment.status === PaymentStatus.PENDING) {
+                await this.bookingsRepository.markPaymentExpired(expiredPayment.paymentId);
+            }
+            return { success: false, message: 'booking_expired' };
+        }
+
         await this.bookingsRepository.updateStatus(booking.id, BookingStatus.CONFIRMED);
+
+        const latestPayment = await this.bookingsRepository.findLatestPaymentByBookingId(booking.id);
+        if (latestPayment && latestPayment.status === PaymentStatus.PENDING) {
+            await this.bookingsRepository.markPaymentPaid(latestPayment.paymentId, {
+                source: 'bank-transfer',
+                referenceCode: dto.referenceCode,
+                transferAmount: dto.transferAmount,
+            });
+        }
 
         if (booking.userId) {
             try {
@@ -146,6 +165,36 @@ export class BookingsService {
         }
 
         return { success: true, bookingCode };
+    }
+
+    async checkPaymentStatusByCode(bookingCode: string) {
+        const booking = await this.bookingsRepository.findEntityByCode(bookingCode);
+        if (!booking) throw new NotFoundException('booking_not_found');
+
+        const latestPayment = await this.bookingsRepository.findLatestPaymentByBookingId(booking.bookingId);
+        const now = Date.now();
+        const isExpired = Boolean(booking.expiresAt && booking.expiresAt.getTime() < now);
+
+        if (isExpired && booking.status === BookingStatus.PENDING_PAYMENT) {
+            await this.bookingsRepository.updateStatus(booking.bookingId, BookingStatus.EXPIRED);
+            if (latestPayment && latestPayment.status === PaymentStatus.PENDING) {
+                await this.bookingsRepository.markPaymentExpired(latestPayment.paymentId);
+            }
+        }
+
+        const paymentStatus = latestPayment?.status ?? null;
+        const bookingStatus = isExpired && booking.status === BookingStatus.PENDING_PAYMENT
+            ? BookingStatus.EXPIRED
+            : booking.status;
+
+        return {
+            bookingCode,
+            bookingStatus,
+            paymentStatus,
+            expiresAt: booking.expiresAt?.toISOString() ?? null,
+            isExpired,
+            isPaid: paymentStatus === PaymentStatus.PAID || bookingStatus === BookingStatus.CONFIRMED || bookingStatus === BookingStatus.COMPLETED,
+        };
     }
 
     async issueTicketEmail(bookingId: string) {

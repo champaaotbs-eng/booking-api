@@ -172,6 +172,28 @@ export class BookingsRepository {
         });
     }
 
+    async findLatestPaymentByBookingId(bookingId: string): Promise<NullableType<PaymentEntity>> {
+        return this.paymentRepo.findOne({
+            where: { bookingId },
+            order: { createdAt: 'DESC' },
+        });
+    }
+
+    async markPaymentPaid(paymentId: string, gatewayResponse?: Record<string, unknown>): Promise<void> {
+        await this.paymentRepo.update({ paymentId }, {
+            status: PaymentStatus.PAID,
+            gatewayResponse,
+            completedAt: new Date(),
+        });
+    }
+
+    async markPaymentExpired(paymentId: string): Promise<void> {
+        await this.paymentRepo.update({ paymentId }, {
+            status: PaymentStatus.EXPIRED,
+            completedAt: new Date(),
+        });
+    }
+
     async getBookedSeatIds(tripId: string): Promise<string[]> {
         const bookingSeats = await this.bookingSeatRepo
             .createQueryBuilder('bs')
@@ -322,6 +344,7 @@ export class BookingsRepository {
                 paymentType,
                 amount: totalAmount,
                 status: PaymentStatus.PENDING,
+                expiresAt,
             });
             await manager.save(PaymentEntity, payment);
 

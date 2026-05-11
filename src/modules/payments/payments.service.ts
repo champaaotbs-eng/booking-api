@@ -83,6 +83,7 @@ export class PaymentsService {
             method: dto.method,
             amount: booking.totalAmount,
             status: PaymentStatus.PENDING,
+            expiresAt: booking.expiresAt ?? undefined,
         });
 
         const paymentUrl = this.buildPaymentUrl(dto.provider, payment.id, booking.totalAmount, dto.returnUrl);

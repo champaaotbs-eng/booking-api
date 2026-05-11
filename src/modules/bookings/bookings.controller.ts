@@ -34,6 +34,12 @@ export class BookingsController {
         return this.bookingsService.findOneByCode(code, user.userId);
     }
 
+    @Public()
+    @Get('bookings/public/:code/payment-status')
+    checkPaymentStatus(@Param('code') code: string) {
+        return this.bookingsService.checkPaymentStatusByCode(code);
+    }
+
     @Patch('bookings/:id/cancel')
     cancel(@Param('id') id: string, @UserInfo() user: { userId: string }) {
         return this.bookingsService.cancel(id, user.userId);

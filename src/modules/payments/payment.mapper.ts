@@ -15,6 +15,7 @@ export class PaymentMapper {
         domain.transactionCode = raw.transactionCode;
         domain.gatewayResponse = raw.gatewayResponse;
         domain.createdAt = raw.createdAt;
+        domain.expiresAt = raw.expiresAt;
         domain.completedAt = raw.completedAt;
         return domain;
     }

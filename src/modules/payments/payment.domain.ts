@@ -13,5 +13,6 @@ export class Payment {
     @Allow() transactionCode?: string;
     @Allow() gatewayResponse?: Record<string, unknown>;
     @Allow() createdAt: Date;
+    @Allow() expiresAt?: Date;
     @Allow() completedAt?: Date;
 }
