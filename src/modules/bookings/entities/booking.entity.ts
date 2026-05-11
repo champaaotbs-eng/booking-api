@@ -57,6 +57,9 @@ export class BookingEntity {
     @Column({ name: 'passenger_name', nullable: true })
     passengerName?: string;
 
+    @Column({ name: 'passenger_email', nullable: true })
+    passengerEmail?: string;
+
     @Column({ name: 'passenger_phone', nullable: true })
     passengerPhone?: string;
 

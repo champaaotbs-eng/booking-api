@@ -10,6 +10,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { AdminAuthGuard } from './guard/admin-auth.guard';
 import { RegisterDto } from './dto/register.dto';
+import { SendLoginOtpDto, VerifyLoginOtpDto } from './dto/login-otp.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -30,6 +31,21 @@ export class AuthController {
   @Post('user/login')
   loginUser(@Req() req, @Res({ passthrough: true }) response: Response) {
     return this.authService.login(req.user, response);
+  }
+
+  @Public()
+  @Post('user/login-otp')
+  sendLoginOtp(@Body() dto: SendLoginOtpDto) {
+    return this.authService.sendLoginOtp(dto.phone);
+  }
+
+  @Public()
+  @Post('user/login-otp/verify')
+  verifyLoginOtp(
+    @Body() dto: VerifyLoginOtpDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.authService.loginWithOtp(dto.phone, dto.otp, response);
   }
 
   @UseGuards(AdminAuthGuard)

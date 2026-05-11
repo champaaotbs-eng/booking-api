@@ -183,7 +183,7 @@ export class TripsRepository {
             .getMany();
 
 
-        console.log('check entities', entities);
+
         return {
             meta: {
                 page: paginationOptions.page,
@@ -219,6 +219,23 @@ export class TripsRepository {
             to: nextDay,
         });
 
+        qb.andWhere(
+            `EXISTS (
+                SELECT 1
+                FROM route_stops rs_pickup
+                WHERE rs_pickup.route_id = trip.route_id
+                  AND rs_pickup.stop_type = 'PICKUP'
+            )`,
+        );
+        qb.andWhere(
+            `EXISTS (
+                SELECT 1
+                FROM route_stops rs_dropoff
+                WHERE rs_dropoff.route_id = trip.route_id
+                  AND rs_dropoff.stop_type = 'DROPOFF'
+            )`,
+        );
+
         const fromTerm = params.from?.trim();
         if (fromTerm) {
             qb.andWhere(
@@ -228,6 +245,9 @@ export class TripsRepository {
                     INNER JOIN stations st_from ON st_from.station_id = rs_from.station_id
                     WHERE rs_from.route_id = trip.route_id
                       AND rs_from.stop_type = 'PICKUP'
+                      AND rs_from.is_active = true
+                      AND st_from.deleted_at IS NULL
+                      AND st_from.is_active = true
                       AND st_from.address ILIKE :fromTerm
                 )`,
                 { fromTerm: `%${fromTerm}%` },
@@ -243,6 +263,9 @@ export class TripsRepository {
                     INNER JOIN stations st_to ON st_to.station_id = rs_to.station_id
                     WHERE rs_to.route_id = trip.route_id
                       AND rs_to.stop_type = 'DROPOFF'
+                      AND rs_to.is_active = true
+                      AND st_to.deleted_at IS NULL
+                      AND st_to.is_active = true
                       AND st_to.address ILIKE :toTerm
                 )`,
                 { toTerm: `%${toTerm}%` },

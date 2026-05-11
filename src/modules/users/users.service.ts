@@ -75,6 +75,10 @@ export class UsersService {
     return await this.userRepository.findByEmail(email);
   }
 
+  async findByPhone(phone: string): Promise<UserEntity | null> {
+    return await this.userRepository.findByPhone(phone);
+  }
+
   isValidPassword(password: string, hash: string): Promise<boolean> {
     return bcrypt.compare(password, hash);
   }

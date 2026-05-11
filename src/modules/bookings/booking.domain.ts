@@ -13,6 +13,7 @@ export class Booking {
     @Allow() bookingCode: string;
     @Allow() userId: string;
     @Allow() passengerName?: string;
+    @Allow() passengerEmail?: string;
     @Allow() passengerPhone?: string;
     @Allow() tripId: string;
     @Allow() tripInfo?: {

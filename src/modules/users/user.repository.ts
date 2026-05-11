@@ -109,5 +109,9 @@ export class UserRepository {
     async findByEmail(email: string) {
         return await this.userRepository.findOne({ where: { email } });
     }
+
+    async findByPhone(phone: string) {
+        return await this.userRepository.findOne({ where: { phone } });
+    }
 }
 

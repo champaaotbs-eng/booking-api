@@ -40,10 +40,17 @@ export class BookingsController {
     }
 
     /** Payment gateway webhook — marks booking as CONFIRMED and sends ticket email */
+    // @Public()
+    // @Post('bookings/webhook/payment')
+    // confirmPayment(@Body() dto: PaymentWebhookDto) {
+    //     return this.bookingsService.confirmPayment(dto.bookingCode);
+    // }
+
+    /** Vietcombank bank transfer webhook — parses BOOKING_CODE from transfer content */
     @Public()
-    @Post('bookings/webhook/payment')
-    confirmPayment(@Body() dto: PaymentWebhookDto) {
-        return this.bookingsService.confirmPayment(dto.bookingCode);
+    @Post('bookings/webhook/bank-transfer')
+    bankTransferWebhook(@Body() dto: PaymentWebhookDto) {
+        return this.bookingsService.handleBankTransferWebhook(dto);
     }
 
     /** Manually re-send ticket email (authenticated) */

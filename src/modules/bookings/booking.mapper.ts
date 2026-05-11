@@ -13,6 +13,7 @@ export class BookingMapper {
         domain.bookingCode = raw.bookingCode;
         domain.userId = raw.userId;
         domain.passengerName = raw.passengerName;
+        domain.passengerEmail = raw.passengerEmail;
         domain.passengerPhone = raw.passengerPhone;
         domain.tripId = raw.tripId;
         domain.totalAmount = Number(raw.totalAmount);

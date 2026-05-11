@@ -14,6 +14,7 @@ import { PaginationResponseDto } from '@/utils/types/pagination-response.dto';
 import { NullableType } from '@/utils/types/nullable.type';
 import { randomBytes } from 'crypto';
 import { PaymentEntity, PaymentStatus, PaymentType } from '@/modules/payments/entities/payment.entity';
+import { UserEntity } from '@/modules/users/entities/user.entity';
 
 const PAYMENT_EXPIRY_MINUTES = 15;
 const ACTIVE_BOOKING_STATUSES = [
@@ -66,7 +67,6 @@ export class BookingsRepository {
                     s.seat_code AS "seatCode"
                 FROM seats s
                 WHERE s.seat_id = ANY($1::uuid[])
-                  AND s.deleted_at IS NULL
             `,
             [seatIds],
         );
@@ -78,6 +78,10 @@ export class BookingsRepository {
             },
             {},
         );
+    }
+
+    private generateTemporaryPassword(): string {
+        return `A${randomBytes(6).toString('hex')}`;
     }
 
     async findManyWithPagination({
@@ -181,6 +185,34 @@ export class BookingsRepository {
 
     async create(userId: string | null, dto: CreateBookingDto, companyId?: string): Promise<Booking> {
         return this.dataSource.transaction(async (manager) => {
+            const userRepo = manager.getRepository(UserEntity);
+            let resolvedUserId = userId ?? undefined;
+
+            if (!resolvedUserId) {
+                const phoneValue = dto.passengerPhone ?? '';
+                const existingUser = await userRepo.findOne({
+                    where: [
+                        { email: dto.passengerEmail },
+                        ...(phoneValue ? [{ phone: phoneValue }] : []),
+                    ],
+                });
+
+                if (existingUser) {
+                    resolvedUserId = existingUser.userId;
+                } else {
+                    const newUser = userRepo.create({
+                        fullName: dto.passengerName ?? dto.passengerEmail,
+                        email: dto.passengerEmail,
+                        phone: phoneValue,
+                        address: '',
+                        password: this.generateTemporaryPassword(),
+                        isVerified: false,
+                    });
+                    const savedUser = await userRepo.save(newUser);
+                    resolvedUserId = savedUser.userId;
+                }
+            }
+
             // Verify trip exists and is active
             const trip = await manager.findOne(TripEntity, {
                 where: { tripId: dto.tripId },
@@ -228,14 +260,14 @@ export class BookingsRepository {
                 `
                     SELECT
                         s.seat_id AS "seatId",
-                        s.price AS "price"
+                        ts.price AS "price"
                     FROM seats s
-                    INNER JOIN bus_version_layouts bvl ON bvl.seat_layout_id = s.layout_id
+                    INNER JOIN bus_version_layouts bvl ON bvl.seat_layout_id = s.seat_layout_id
+                    INNER JOIN trip_seats ts ON ts.seat_id::text = s.seat_id::text AND ts.trip_id::text = $2::text
                     WHERE bvl.bus_version_id = $1
-                      AND s.seat_id = ANY($2::uuid[])
-                      AND s.deleted_at IS NULL
+                      AND s.seat_id = ANY($3::uuid[])
                 `,
-                [trip.busVersionId, dto.seatIds],
+                [trip.busVersionId, dto.tripId, dto.seatIds],
             );
 
             if (seats.length !== dto.seatIds.length) {
@@ -260,13 +292,14 @@ export class BookingsRepository {
             const bookingCode = await this.generateBookingCode(manager);
             const booking = manager.create(BookingEntity, {
                 bookingCode,
-                userId: userId ?? undefined,
+                userId: resolvedUserId,
                 tripId: dto.tripId,
                 totalAmount,
                 paymentMethod: dto.paymentMethod,
                 status,
                 expiresAt,
                 passengerName: dto.passengerName,
+                passengerEmail: dto.passengerEmail,
                 passengerPhone: dto.passengerPhone,
             });
             const savedBooking = await manager.save(BookingEntity, booking);

@@ -7,6 +7,7 @@ import { BookingStatus } from './entities/booking.entity';
 import { MailService } from '@/modules/mail/mail.service';
 import { UsersService } from '@/modules/users/users.service';
 import dayjs from 'dayjs';
+import { PaymentWebhookDto } from './dto/payment-webhook.dto';
 
 @Injectable()
 export class BookingsService {
@@ -108,6 +109,43 @@ export class BookingsService {
         }
 
         return confirmed;
+    }
+
+    async handleBankTransferWebhook(dto: PaymentWebhookDto) {
+        if (dto.transferType !== 'in') {
+            return { success: false, message: 'not_incoming_transfer' };
+        }
+
+        // Extract booking code from content: format "... BOOKING_CODE:XXXX ..."
+        const match = dto.content.match(/BOOKING_CODE:([A-Z0-9]+)/i);
+        if (!match) {
+            return { success: false, message: 'booking_code_not_found_in_content' };
+        }
+
+        const bookingCode = match[1].toUpperCase();
+        const booking = await this.bookingsRepository.findByCode(bookingCode);
+        if (!booking) {
+            return { success: false, message: 'booking_not_found' };
+        }
+
+        if (booking.status !== BookingStatus.PENDING_PAYMENT) {
+            return { success: true, message: 'already_processed' };
+        }
+
+        await this.bookingsRepository.updateStatus(booking.id, BookingStatus.CONFIRMED);
+
+        if (booking.userId) {
+            try {
+                const user = await this.usersService.findUserById(booking.userId);
+                if (user?.email) {
+                    await this.issueTicketEmail(booking.id);
+                }
+            } catch {
+                // Non-blocking
+            }
+        }
+
+        return { success: true, bookingCode };
     }
 
     async issueTicketEmail(bookingId: string) {

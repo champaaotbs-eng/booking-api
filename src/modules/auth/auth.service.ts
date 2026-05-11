@@ -267,6 +267,31 @@ export class AuthService {
     }
   }
 
+  async sendLoginOtp(phone: string) {
+    const user = await this.usersService.findByPhone(phone);
+    if (!user) throw new BadRequestException('user_not_found');
+    if (!user.email) throw new BadRequestException('user_has_no_email');
+
+    const otp = await this.otpService.generateOtp(user.userId);
+    await this.mailService.verifyEmail({
+      to: user.email,
+      data: { otp },
+    });
+    return { sent: true };
+  }
+
+  async loginWithOtp(phone: string, otp: string, response: Response) {
+    const isValidOTP = this.otpService.verifyOtp(otp);
+    if (!isValidOTP) throw new BadRequestException('Invalid OTP');
+
+    const user = await this.usersService.findByPhone(phone);
+    if (!user) throw new NotFoundException(this.i18nService.t('common.NOT_FOUND', {
+      args: { entity: 'user' },
+    }));
+
+    return this.login(user as any, response);
+  }
+
   async sendRequestPassword(email: string) {
     const user = await this.usersService.findByEmail(email);
 
