@@ -11,7 +11,7 @@ import {
   RegisterWithEmailOtpDto,
   ResolveOrCreateEmailOtpDto,
   SendCustomerEmailOtpDto,
-} from './dto/customer-phone-otp.dto';
+} from './dto/customer-email-otp.dto';
 
 @Controller('auth')
 export class AuthController {

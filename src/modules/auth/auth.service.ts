@@ -11,7 +11,7 @@ import { MailService } from 'modules/mail/mail.service';
 import { OtpService } from 'modules/otp/otp.service';
 import { AdminsService } from 'modules/admins/admins.service';
 import { Admin } from 'modules/admins/admin.domain';
-import { RegisterWithEmailOtpDto, ResolveOrCreateEmailOtpDto } from './dto/customer-phone-otp.dto';
+import { RegisterWithEmailOtpDto, ResolveOrCreateEmailOtpDto } from './dto/customer-email-otp.dto';
 
 @Injectable()
 export class AuthService {
@@ -215,6 +215,10 @@ export class AuthService {
 
 
   async sendVerifyEmail(user: User) {
+    if (this.otpService.isBypassEnabled()) {
+      return { sent: true, bypassed: true };
+    }
+
     const otp = await this.otpService.generateOtp(user.userId);
 
     return this.mailService.verifyEmail({
@@ -254,6 +258,10 @@ export class AuthService {
     if (!user) throw new BadRequestException('user_not_found');
     if (!user.email) throw new BadRequestException('user_has_no_email');
 
+    if (this.otpService.isBypassEnabled()) {
+      return { sent: true, bypassed: true };
+    }
+
     const otp = await this.otpService.generateOtp(user.userId);
     await this.mailService.verifyEmail({
       to: user.email,
@@ -276,6 +284,11 @@ export class AuthService {
 
   async sendCustomerEmailOtp(email: string) {
     const normalizedEmail = email.trim();
+
+    if (this.otpService.isBypassEnabled()) {
+      return { sent: true, email: normalizedEmail, bypassed: true };
+    }
+
     const otp = await this.otpService.generateOtp(normalizedEmail);
 
     await this.mailService.verifyEmail({

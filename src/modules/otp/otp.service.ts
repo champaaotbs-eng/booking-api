@@ -18,9 +18,17 @@ export class OtpService {
         return otp
     }
 
+    isBypassEnabled(): boolean {
+        return this.configService.get('otp.bypassEnabled', { infer: true }) === true;
+    }
+
     // Verify OTP code
     verifyOtp(token: string): boolean {
         try {
+            if (this.isBypassEnabled()) {
+                return /^\d{6}$/.test(token.trim());
+            }
+
             const secret = this.configService.get('otp.secret', { infer: true });
             const isValid = authenticator.verify({ token, secret })
             return isValid;

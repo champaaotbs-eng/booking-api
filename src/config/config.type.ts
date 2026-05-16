@@ -6,7 +6,6 @@ import { CloudinaryConfig } from './types/cloudinary-config.type';
 import { PaymentConfig } from "./types/payment-config.type"
 import { MailerConfig } from './types/mailer-config.type';
 import { OtpConfig } from './types/otp-config.type';
-import { EsmsConfig } from './types/esms-config.type';
 
 export type AllConfigType = {
     app: AppConfig;
@@ -17,5 +16,4 @@ export type AllConfigType = {
     payment: PaymentConfig;
     mailer: MailerConfig;
     otp: OtpConfig;
-    esms: EsmsConfig;
 };
