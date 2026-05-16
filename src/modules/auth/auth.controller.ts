@@ -2,15 +2,16 @@ import { Controller, Get, Post, Req, Res, UseGuards, BadRequestException, Patch,
 import { AuthService } from './auth.service';
 import { Request, Response } from 'express';
 import { Public, UserInfo } from '@/decorator/customize.decorator';
-import { LocalAuthGuard } from './guard/local-auth.guard';
 import { I18nService } from 'nestjs-i18n';
 import { I18nTranslations } from '@/generated/i18n.generated';
 import { User } from 'modules/users/user.domain';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
 import { AdminAuthGuard } from './guard/admin-auth.guard';
-import { RegisterDto } from './dto/register.dto';
 import { SendLoginOtpDto, VerifyLoginOtpDto } from './dto/login-otp.dto';
+import {
+  RegisterWithEmailOtpDto,
+  ResolveOrCreateEmailOtpDto,
+  SendCustomerEmailOtpDto,
+} from './dto/customer-phone-otp.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -19,24 +20,10 @@ export class AuthController {
     private readonly i18nService: I18nService<I18nTranslations>
   ) { }
 
-
-  @Public()
-  @Post('user/register')
-  register(@Body() registerDto: RegisterDto, @Res({ passthrough: true }) response: Response) {
-    return this.authService.register(registerDto, response)
-  }
-
-  @UseGuards(LocalAuthGuard)
-  @Public()
-  @Post('user/login')
-  loginUser(@Req() req, @Res({ passthrough: true }) response: Response) {
-    return this.authService.login(req.user, response);
-  }
-
   @Public()
   @Post('user/login-otp')
   sendLoginOtp(@Body() dto: SendLoginOtpDto) {
-    return this.authService.sendLoginOtp(dto.phone);
+    return this.authService.sendLoginOtp(dto.email);
   }
 
   @Public()
@@ -45,7 +32,31 @@ export class AuthController {
     @Body() dto: VerifyLoginOtpDto,
     @Res({ passthrough: true }) response: Response,
   ) {
-    return this.authService.loginWithOtp(dto.phone, dto.otp, response);
+    return this.authService.loginWithOtp(dto.email, dto.otp, response);
+  }
+
+  @Public()
+  @Post('customer/email-otp/send')
+  sendCustomerEmailOtp(@Body() dto: SendCustomerEmailOtpDto) {
+    return this.authService.sendCustomerEmailOtp(dto.email);
+  }
+
+  @Public()
+  @Post('customer/register-with-email-otp')
+  registerWithEmailOtp(
+    @Body() dto: RegisterWithEmailOtpDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.authService.registerWithEmailOtp(dto, response);
+  }
+
+  @Public()
+  @Post('customer/email-otp/resolve-or-create')
+  resolveOrCreateWithEmailOtp(
+    @Body() dto: ResolveOrCreateEmailOtpDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.authService.resolveOrCreateWithEmailOtp(dto, response);
   }
 
   @UseGuards(AdminAuthGuard)
@@ -77,29 +88,6 @@ export class AuthController {
     @UserInfo() user: User
   ) {
     return this.authService.verifyEmail(code, user.userId);
-  }
-
-  @Public()
-  @Post('send-request-password')
-  sendRequestPassword(@Body('email') email: string) {
-    return this.authService.sendRequestPassword(email);
-  }
-
-  @Public()
-  @Patch('reset-password')
-  resetPassword(
-    @Query('code') code: string,
-    @Body() forgotPasswordDto: ForgotPasswordDto
-  ) {
-    return this.authService.resetPassword(code, forgotPasswordDto);
-  }
-
-  @Patch('change-password')
-  changePassword(
-    @Body() changePasswordDto: ChangePasswordDto,
-    @UserInfo() user: User
-  ) {
-    return this.authService.changePassword(user.userId, changePasswordDto);
   }
 
 }

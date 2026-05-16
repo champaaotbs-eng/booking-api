@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { IsInt, IsString } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString } from 'class-validator';
 import validateConfig from '@/utils/validate-config';
 import { OtpConfig } from '@/config/types/otp-config.type';
 
@@ -15,6 +15,10 @@ class OtpEnvValidator {
 
     @IsString()
     OTP_SECRET: string;
+
+    @IsBoolean()
+    @IsOptional()
+    OTP_BYPASS_ENABLED?: boolean;
 }
 
 export default registerAs<OtpConfig>('otp', () => {
@@ -25,5 +29,6 @@ export default registerAs<OtpConfig>('otp', () => {
         digits: parseInt(process.env.OTP_DIGITS ?? '6', 10),
         period: parseInt(process.env.OTP_PERIOD ?? '300', 10),
         algorithm: (process.env.OTP_ALGORITHM as 'SHA1' | 'SHA256' | 'SHA512') ?? 'SHA1',
+        bypassEnabled: process.env.OTP_BYPASS_ENABLED === 'true',
     };
 });

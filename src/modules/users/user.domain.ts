@@ -1,4 +1,3 @@
-import { Exclude } from "class-transformer";
 import { Role } from "modules/roles/role.domain";
 
 export class User {
@@ -7,9 +6,6 @@ export class User {
     fullName: string;
 
     email: string | null
-
-    @Exclude({ toPlainOnly: true })
-    password?: string;
 
     address: string;
 

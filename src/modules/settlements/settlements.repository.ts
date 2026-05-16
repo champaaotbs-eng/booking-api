@@ -37,6 +37,12 @@ export class SettlementsRepository {
         if (filterOptions?.status) {
             qb.andWhere('settlement.status = :status', { status: filterOptions.status });
         }
+        if (filterOptions?.fromDate) {
+            qb.andWhere('settlement.periodTo >= :fromDate', { fromDate: filterOptions.fromDate });
+        }
+        if (filterOptions?.toDate) {
+            qb.andWhere('settlement.periodFrom <= :toDate', { toDate: filterOptions.toDate });
+        }
 
         if (sortOptions?.length) {
             sortOptions.forEach((s) => qb.addOrderBy(`settlement.${s.orderBy}`, s.order));

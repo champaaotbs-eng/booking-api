@@ -9,6 +9,12 @@ import { AddBusCompanyAdminDto, CreateBusCompanyDto, UpdateBusCompanyDto } from 
 export class BusCompaniesController {
     constructor(private readonly busCompaniesService: BusCompaniesService) { }
 
+    @Get('all')
+    @Public()
+    findAllOptions() {
+        return this.busCompaniesService.findAllOptions();
+    }
+
     @Get()
     @Public()
     findAll(@Query() query: QueryDto<FilterBusCompanyDto, SortBusCompanyDto>) {

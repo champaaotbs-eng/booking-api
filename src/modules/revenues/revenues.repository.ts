@@ -90,6 +90,49 @@ export class RevenuesRepository {
         return RevenueMapper.toDomain(saved);
     }
 
+    async getStats(filterOptions?: FilterRevenueDto | null) {
+        const qb = this.repo.createQueryBuilder('revenue');
+
+        if (filterOptions?.companyId) {
+            qb.andWhere('revenue.busCompanyId = :companyId', { companyId: filterOptions.companyId });
+        }
+        if (filterOptions?.fromDate) {
+            qb.andWhere('revenue.createdAt >= :fromDate', { fromDate: new Date(filterOptions.fromDate) });
+        }
+        if (filterOptions?.toDate) {
+            qb.andWhere('revenue.createdAt <= :toDate', { toDate: new Date(filterOptions.toDate) });
+        }
+
+        const totals = await qb
+            .select('SUM(revenue.grossAmount)', 'totalGross')
+            .addSelect('SUM(revenue.commission)', 'totalCommission')
+            .addSelect('SUM(revenue.netAmount)', 'totalNet')
+            .addSelect('COUNT(*)', 'totalCount')
+            .getRawOne<{ totalGross: string; totalCommission: string; totalNet: string; totalCount: string }>();
+
+        const daily = await qb
+            .select("TO_CHAR(revenue.createdAt AT TIME ZONE 'UTC', 'YYYY-MM-DD')", 'date')
+            .addSelect('SUM(revenue.grossAmount)', 'gross')
+            .addSelect('SUM(revenue.commission)', 'commission')
+            .addSelect('SUM(revenue.netAmount)', 'net')
+            .groupBy("TO_CHAR(revenue.createdAt AT TIME ZONE 'UTC', 'YYYY-MM-DD')")
+            .orderBy('date', 'ASC')
+            .getRawMany<{ date: string; gross: string; commission: string; net: string }>();
+
+        return {
+            totalGross: Number(totals?.totalGross ?? 0),
+            totalCommission: Number(totals?.totalCommission ?? 0),
+            totalNet: Number(totals?.totalNet ?? 0),
+            totalCount: Number(totals?.totalCount ?? 0),
+            daily: daily.map(d => ({
+                date: d.date,
+                gross: Number(d.gross),
+                commission: Number(d.commission),
+                net: Number(d.net),
+            })),
+        };
+    }
+
     async remove(id: string): Promise<void> {
         await this.repo.delete({ revenueId: id });
     }

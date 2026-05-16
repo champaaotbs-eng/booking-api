@@ -1,9 +1,6 @@
-import { Exclude } from "class-transformer";
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, BeforeInsert, BeforeUpdate, ManyToOne, JoinColumn } from "typeorm";
-import * as bcrypt from "bcrypt";
-import { RoleEntity } from "@/modules/roles/entities/role.entity";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
-@Entity('user')
+@Entity('users')
 export class UserEntity {
   @PrimaryGeneratedColumn('uuid', { name: 'user_id' })
   userId: string;
@@ -11,12 +8,8 @@ export class UserEntity {
   @Column({ name: 'full_name' })
   fullName: string;
 
-  @Column({ unique: true, name: 'email' })
+  @Column({ name: 'email' })
   email: string;
-
-  @Column({ nullable: true })
-  @Exclude({ toPlainOnly: true })
-  password?: string;
 
   @Column({ name: 'address' })
   address: string;
@@ -50,15 +43,4 @@ export class UserEntity {
 
   @DeleteDateColumn({ type: "timestamptz", name: 'deleted_at' })
   deletedAt?: Date;
-
-  @BeforeInsert()
-  @BeforeUpdate()
-  async hashPassword() {
-    if (this.password) {
-      const saltRounds = 10;
-      const salt = bcrypt.genSaltSync(saltRounds);
-      this.password = await bcrypt.hash(this.password, salt);
-    }
-  }
-
 }

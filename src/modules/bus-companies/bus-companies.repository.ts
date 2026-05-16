@@ -59,6 +59,14 @@ export class BusCompaniesRepository {
         };
     }
 
+    async findAll(): Promise<BusCompany[]> {
+        const entities = await this.repo.find({
+            order: { name: 'ASC' },
+        });
+
+        return entities.map(BusCompanyMapper.toDomain);
+    }
+
     async findById(id: string): Promise<NullableType<BusCompany>> {
         const entity = await this.repo.findOne({
             where: { busCompanyId: id },

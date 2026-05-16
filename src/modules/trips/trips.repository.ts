@@ -182,7 +182,10 @@ export class TripsRepository {
             .take(paginationOptions.limit)
             .getMany();
 
-
+        const tripIds = entities.map((e) => e.tripId);
+        const bookedTripIds = tripIds.length
+            ? await this.getBookedTripIds(tripIds)
+            : new Set<string>();
 
         return {
             meta: {
@@ -191,7 +194,11 @@ export class TripsRepository {
                 totalPages: Math.ceil(total / paginationOptions.limit),
                 totalItems: total,
             },
-            result: entities.map(TripMapper.toDomain),
+            result: entities.map((e) => {
+                const domain = TripMapper.toDomain(e);
+                domain.hasBookings = bookedTripIds.has(e.tripId);
+                return domain;
+            }),
         };
     }
 
@@ -200,6 +207,7 @@ export class TripsRepository {
         from?: string;
         to?: string;
         isPublished?: boolean;
+        statusActive?: boolean;
     }): Promise<Trip[]> {
         const qb = this.tripRepo
             .createQueryBuilder('trip')
@@ -276,6 +284,10 @@ export class TripsRepository {
             qb.andWhere('trip.isPublished = :isPublished', {
                 isPublished: params.isPublished,
             });
+        }
+
+        if (params.statusActive) {
+            qb.andWhere('trip.status = :status', { status: 'ACTIVE' });
         }
 
         qb.orderBy('trip.departureTime', 'ASC');
@@ -411,6 +423,23 @@ export class TripsRepository {
         return rows.map((r: any) => ({ seatId: r.seatId, seatCode: r.seatCode, price: Number(r.price) }));
     }
 
+    async getBookingsBySeat(tripId: string): Promise<{ seatId: string; bookingCode: string; passengerName?: string; passengerEmail?: string; passengerPhone?: string }[]> {
+        const rows = await this.bookingSeatRepo
+            .createQueryBuilder('bs')
+            .innerJoin('bs.booking', 'b')
+            .where('b.tripId = :tripId', { tripId })
+            .andWhere('b.status IN (:...statuses)', { statuses: ACTIVE_BOOKING_STATUSES })
+            .select([
+                'bs.seatId AS "seatId"',
+                'b.bookingCode AS "bookingCode"',
+                'b.passengerName AS "passengerName"',
+                'b.passengerEmail AS "passengerEmail"',
+                'b.passengerPhone AS "passengerPhone"',
+            ])
+            .getRawMany();
+        return rows;
+    }
+
     async hasActiveBookings(tripId: string): Promise<boolean> {
         const count = await this.bookingSeatRepo
             .createQueryBuilder('bs')
@@ -419,5 +448,17 @@ export class TripsRepository {
             .andWhere('b.status IN (:...statuses)', { statuses: ACTIVE_BOOKING_STATUSES })
             .getCount();
         return count > 0;
+    }
+
+    private async getBookedTripIds(tripIds: string[]): Promise<Set<string>> {
+        const rows = await this.bookingSeatRepo
+            .createQueryBuilder('bs')
+            .innerJoin('bs.booking', 'b')
+            .where('b.tripId IN (:...tripIds)', { tripIds })
+            .andWhere('b.status IN (:...statuses)', { statuses: ACTIVE_BOOKING_STATUSES })
+            .select('b.tripId', 'tripId')
+            .distinct(true)
+            .getRawMany();
+        return new Set(rows.map((r: { tripId: string }) => r.tripId));
     }
 }

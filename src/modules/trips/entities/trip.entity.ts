@@ -14,10 +14,8 @@ import { BusCompanyEntity } from '@/modules/bus-companies/entities/bus-company.e
 import { TripStopEntity } from './trip-stop.entity';
 
 export enum TripStatus {
-    SCHEDULED = 'SCHEDULED',
     ACTIVE = 'ACTIVE',
-    COMPLETED = 'COMPLETED',
-    CANCELLED = 'CANCELLED',
+    INACTIVE = 'INACTIVE',
 }
 
 @Entity('trips')
@@ -55,7 +53,7 @@ export class TripEntity {
     @Column({ name: 'base_price', type: 'decimal', precision: 10, scale: 2 })
     basePrice: number;
 
-    @Column({ name: 'status', default: TripStatus.SCHEDULED })
+    @Column({ name: 'status', default: TripStatus.ACTIVE })
     status: TripStatus;
 
     @Column({ name: 'is_published', default: true })

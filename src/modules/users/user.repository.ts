@@ -113,5 +113,10 @@ export class UserRepository {
     async findByPhone(phone: string) {
         return await this.userRepository.findOne({ where: { phone } });
     }
+
+    async isPhoneExist(phone: string): Promise<boolean> {
+        const count = await this.userRepository.count({ where: { phone } });
+        return count > 0;
+    }
 }
 

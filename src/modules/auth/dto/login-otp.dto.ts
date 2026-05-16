@@ -1,17 +1,17 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 
 export class SendLoginOtpDto {
-    @IsString()
-    @IsNotEmpty()
-    phone: string;
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
 }
 
 export class VerifyLoginOtpDto {
-    @IsString()
-    @IsNotEmpty()
-    phone: string;
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
 
-    @IsString()
-    @IsNotEmpty()
-    otp: string;
+  @IsString()
+  @IsNotEmpty()
+  otp: string;
 }

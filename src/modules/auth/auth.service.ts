@@ -8,13 +8,10 @@ import { ConfigService } from '@nestjs/config';
 import { AllConfigType } from '@/config/config.type';
 import { Response } from 'express';
 import { MailService } from 'modules/mail/mail.service';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
-import { RegisterDto } from './dto/register.dto';
 import { OtpService } from 'modules/otp/otp.service';
 import { AdminsService } from 'modules/admins/admins.service';
 import { Admin } from 'modules/admins/admin.domain';
-import { RolesService } from 'modules/roles/roles.service';
+import { RegisterWithEmailOtpDto, ResolveOrCreateEmailOtpDto } from './dto/customer-phone-otp.dto';
 
 @Injectable()
 export class AuthService {
@@ -27,25 +24,6 @@ export class AuthService {
     private mailService: MailService,
     private otpService: OtpService,
   ) { }
-
-  async register(dto: RegisterDto, response: Response) {
-    const user = await this.usersService.create({
-      fullName: dto.fullName,
-      email: dto.email,
-      password: dto.password,
-      phone: dto.phone,
-      address: dto.address ?? '',
-    } as any)
-
-    return this.login(user as any, response)
-  }
-
-  async validateUser(email: string, pass: string): Promise<any> {
-    const user = await this.usersService.findByEmail(email);
-    const isValid = await this.usersService.isValidPassword(pass, user?.password || '')
-    if (isValid) return user;
-    return null;
-  }
 
   async validateAdmin(username: string, pass: string): Promise<any> {
     const admin = await this.adminsService.findAdminByUsername(username);
@@ -62,6 +40,7 @@ export class AuthService {
       adminId: admin.adminId,
       username: admin.username,
       fullName: admin.fullName,
+      busCompanyId: admin.busCompanyId ?? null,
     };
 
 
@@ -97,6 +76,7 @@ export class AuthService {
       userId,
       fullName,
       email,
+      phone,
     }
 
     const refreshToken = this.createRefreshToken(payload)
@@ -152,6 +132,7 @@ export class AuthService {
           adminId: admin.adminId,
           username: admin.username,
           fullName: admin.fullName,
+          busCompanyId: admin.busCompanyId ?? null,
         }
 
         const refresh_token = this.createRefreshToken(newPayload)
@@ -196,6 +177,7 @@ export class AuthService {
           userId,
           fullName,
           email,
+          phone,
         }
 
         const refresh_token = this.createRefreshToken(newPayload)
@@ -267,8 +249,8 @@ export class AuthService {
     }
   }
 
-  async sendLoginOtp(phone: string) {
-    const user = await this.usersService.findByPhone(phone);
+  async sendLoginOtp(email: string) {
+    const user = await this.usersService.findByEmail(email.trim());
     if (!user) throw new BadRequestException('user_not_found');
     if (!user.email) throw new BadRequestException('user_has_no_email');
 
@@ -280,11 +262,11 @@ export class AuthService {
     return { sent: true };
   }
 
-  async loginWithOtp(phone: string, otp: string, response: Response) {
+  async loginWithOtp(email: string, otp: string, response: Response) {
     const isValidOTP = this.otpService.verifyOtp(otp);
     if (!isValidOTP) throw new BadRequestException('Invalid OTP');
 
-    const user = await this.usersService.findByPhone(phone);
+    const user = await this.usersService.findByEmail(email.trim());
     if (!user) throw new NotFoundException(this.i18nService.t('common.NOT_FOUND', {
       args: { entity: 'user' },
     }));
@@ -292,49 +274,53 @@ export class AuthService {
     return this.login(user as any, response);
   }
 
-  async sendRequestPassword(email: string) {
-    const user = await this.usersService.findByEmail(email);
+  async sendCustomerEmailOtp(email: string) {
+    const normalizedEmail = email.trim();
+    const otp = await this.otpService.generateOtp(normalizedEmail);
 
-    if (!user)
-      throw new BadRequestException('Email does not exist');
-
-    const otp = await this.otpService.generateOtp(user.userId);
-
-    return this.mailService.forgotPassword({
+    await this.mailService.verifyEmail({
+      to: normalizedEmail,
       data: { otp },
-      to: user.email,
     });
+
+    return { sent: true, email: normalizedEmail };
   }
 
-  async resetPassword(otp: string, forgotPasswordDto: ForgotPasswordDto) {
-    try {
-      const isValidOTP = this.otpService.verifyOtp(otp);
+  async registerWithEmailOtp(dto: RegisterWithEmailOtpDto, response: Response) {
+    const normalizedEmail = dto.email.trim();
+    const isValidOtp = this.otpService.verifyOtp(dto.otp);
+    if (!isValidOtp) throw new BadRequestException('invalid_otp');
 
-      if (!isValidOTP) throw new BadRequestException('Invalid OTP')
+    const user = await this.usersService.createEmailAuthUser({
+      fullName: dto.fullName,
+      email: normalizedEmail,
+      phone: dto.phone,
+      provider: 'email-otp',
+      isVerified: true,
+    });
 
-      const { newPassword, confirmPassword } = forgotPasswordDto;
+    return this.login(user as any, response);
+  }
 
-      if (newPassword !== confirmPassword)
-        throw new BadRequestException('Password not match');
+  async resolveOrCreateWithEmailOtp(dto: ResolveOrCreateEmailOtpDto, response: Response) {
+    const normalizedEmail = dto.email.trim();
+    const isValidOtp = this.otpService.verifyOtp(dto.otp);
+    if (!isValidOtp) throw new BadRequestException('invalid_otp');
 
-      return await this.usersService.resetPassword(forgotPasswordDto.email, newPassword);
-    } catch (error) {
-      throw new BadRequestException(error);
+    const existingUser = await this.usersService.findByEmail(normalizedEmail);
+
+    if (existingUser) {
+      return this.login(existingUser as any, response);
     }
-  }
 
-  async changePassword(userId: User['userId'], changePasswordDto: ChangePasswordDto) {
-    const user = await this.usersService.findUserById(userId);
+    const user = await this.usersService.createEmailAuthUser({
+      fullName: dto.fullName?.trim() || normalizedEmail,
+      email: normalizedEmail,
+      phone: dto.phone,
+      provider: 'email-otp',
+      isVerified: true,
+    });
 
-    if (!user) throw new BadRequestException('User not found');
-
-    const isValidPassword = this.usersService.isValidPassword(changePasswordDto.oldPassword, user.password);
-    if (!isValidPassword) throw new BadRequestException('Old password is incorrect');
-
-    if (changePasswordDto.newPassword !== changePasswordDto.confirmPassword) throw new BadRequestException('Password not match');
-
-    user.password = changePasswordDto.newPassword;
-
-    await this.usersService.resetPassword(user.email, changePasswordDto.newPassword);
+    return this.login(user as any, response);
   }
 }

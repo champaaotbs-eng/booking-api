@@ -49,6 +49,10 @@ class EnvironmentVariablesValidator {
 
     @IsInt()
     CACHE_TTL: number
+
+    @IsInt()
+    @IsOptional()
+    BOOKING_CANCEL_CUTOFF_HOURS: number
 }
 
 export default registerAs<AppConfig>('app', () => {
@@ -61,6 +65,9 @@ export default registerAs<AppConfig>('app', () => {
         adminPortalDomain: process.env.ADMIN_PORTAL_DOMAIN,
         customerPortalDomain: process.env.CUSTOMER_PORTAL_DOMAIN,
         backendDomain: process.env.BACKEND_DOMAIN ?? 'http://localhost',
+        bookingCancelCutoffHours: process.env.BOOKING_CANCEL_CUTOFF_HOURS
+            ? parseInt(process.env.BOOKING_CANCEL_CUTOFF_HOURS, 10)
+            : 3,
         port: process.env.APP_PORT
             ? parseInt(process.env.APP_PORT, 10)
             : process.env.PORT

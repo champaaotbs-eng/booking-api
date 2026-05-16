@@ -33,6 +33,7 @@ export class TripsService {
             from: dto.from,
             to: dto.to,
             isPublished: true,
+            statusActive: true,
         });
     }
 
@@ -40,14 +41,21 @@ export class TripsService {
         const trip = await this.tripsRepository.findById(id);
         if (!trip) throw new NotFoundException('trip_not_found');
 
-        const seatAvailability = trip.busVersionId
-            ? await this.getSeatAvailability(id, trip.busVersionId, trip.basePrice)
-            : [];
+        const [seatAvailability, hasBookings, bookingsBySeat] = await Promise.all([
+            trip.busVersionId
+                ? this.getSeatAvailability(id, trip.busVersionId, trip.basePrice)
+                : Promise.resolve([]),
+            this.tripsRepository.hasActiveBookings(id),
+            this.tripsRepository.getBookingsBySeat(id),
+        ]);
 
-        return {
-            ...trip,
-            seatAvailability,
-        };
+        const bookingMap = new Map(bookingsBySeat.map((b) => [b.seatId, b]));
+        const seatsWithBooking = seatAvailability.map((seat) => ({
+            ...seat,
+            booking: bookingMap.get(seat.seatId) ?? null,
+        }));
+
+        return { ...trip, seatAvailability: seatsWithBooking, hasBookings };
     }
 
     private validateTripTimeRange(departureTime: string, arrivalTime: string) {
@@ -97,6 +105,16 @@ export class TripsService {
     async update(id: string, dto: UpdateTripDto) {
         const trip = await this.tripsRepository.findById(id);
         if (!trip) throw new NotFoundException('trip_not_found');
+
+        const { status, ...otherFields } = dto;
+        const hasNonStatusChanges = Object.keys(otherFields).length > 0;
+
+        if (hasNonStatusChanges) {
+            const hasBookings = await this.tripsRepository.hasActiveBookings(id);
+            if (hasBookings) {
+                throw new BadRequestException('trip_has_bookings_cannot_edit');
+            }
+        }
 
         if (dto.departureTime && dto.arrivalTime) {
             this.validateTripTimeRange(dto.departureTime, dto.arrivalTime);

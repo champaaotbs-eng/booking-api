@@ -12,8 +12,8 @@ export class BookingsController {
 
     @Public()
     @Post('bookings')
-    create(@UserInfo() user: { userId: string } | undefined, @Body() dto: CreateBookingDto) {
-        return this.bookingsService.create(user?.userId ?? null, dto);
+    create(@UserInfo() user: { userId?: string; email?: string } | undefined, @Body() dto: CreateBookingDto) {
+        return this.bookingsService.create(user, dto);
     }
 
     @Post('company/bookings')
@@ -76,5 +76,10 @@ export class BookingsController {
         @Query() query: QueryDto<FilterBookingDto, SortBookingDto>,
     ) {
         return this.bookingsService.findCompany(companyId, query);
+    }
+
+    @Get('bookings/:id/seat-layout')
+    getBookingSeatLayout(@Param('id') id: string) {
+        return this.bookingsService.getBookingSeatLayout(id);
     }
 }

@@ -9,7 +9,7 @@ export class BookingMapper {
         seatCodeBySeatId: Record<string, string> = {},
     ): Booking {
         const domain = new Booking();
-        domain.id = raw.id;
+        domain.id = raw.bookingId;
         domain.bookingCode = raw.bookingCode;
         domain.userId = raw.userId;
         domain.passengerName = raw.passengerName;
@@ -23,16 +23,22 @@ export class BookingMapper {
         domain.createdAt = raw.createdAt;
 
         if (raw.trip) {
+            const stops = raw.trip.tripStops ?? [];
+            const sorted = [...stops].sort((a, b) => a.stopOrder - b.stopOrder);
+            const first = sorted[0]?.stop?.station;
+            const last = sorted[sorted.length - 1]?.stop?.station;
             domain.tripInfo = {
                 departureTime: raw.trip.departureTime,
                 arrivalTime: raw.trip.arrivalTime,
+                fromLocationName: first?.label,
+                toLocationName: last?.label,
                 busCompanyName: raw.trip.busCompany?.name,
             };
         }
 
         if (seats?.length) {
             domain.seats = seats.map((s) => ({
-                id: s.id,
+                id: s.bookingSeatId,
                 seatId: s.seatId,
                 seatCode: seatCodeBySeatId[s.seatId],
                 price: Number(s.price),

@@ -7,4 +7,5 @@ export type AppConfig = {
     port: number;
     timeZone: string;
     cacheTTL: number;
+    bookingCancelCutoffHours: number;
 };

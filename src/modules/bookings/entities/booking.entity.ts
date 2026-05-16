@@ -68,8 +68,4 @@ export class BookingEntity {
 
     @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
     createdAt: Date;
-
-    get id(): string {
-        return this.bookingId;
-    }
 }

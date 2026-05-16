@@ -8,6 +8,10 @@ import { AddBusCompanyAdminDto, CreateBusCompanyDto, UpdateBusCompanyDto } from 
 export class BusCompaniesService {
     constructor(private readonly busCompaniesRepository: BusCompaniesRepository) { }
 
+    findAllOptions() {
+        return this.busCompaniesRepository.findAll();
+    }
+
     findAll(query: QueryDto<FilterBusCompanyDto, SortBusCompanyDto>) {
         return this.busCompaniesRepository.findManyWithPagination({
             filterOptions: query.filters,

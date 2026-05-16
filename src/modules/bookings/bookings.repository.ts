@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, FindOptionsWhere, In, Not, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { BookingEntity, BookingStatus, PaymentMethod } from './entities/booking.entity';
 import { BookingSeatEntity } from './entities/booking-seat.entity';
 import { TripEntity } from '@/modules/trips/entities/trip.entity';
@@ -31,10 +31,6 @@ export class BookingsRepository {
         private readonly bookingRepo: Repository<BookingEntity>,
         @InjectRepository(BookingSeatEntity)
         private readonly bookingSeatRepo: Repository<BookingSeatEntity>,
-        @InjectRepository(TripEntity)
-        private readonly tripRepo: Repository<TripEntity>,
-        @InjectRepository(TripStopEntity)
-        private readonly tripStopRepo: Repository<TripStopEntity>,
         @InjectRepository(PaymentEntity)
         private readonly paymentRepo: Repository<PaymentEntity>,
         private readonly dataSource: DataSource,
@@ -80,10 +76,6 @@ export class BookingsRepository {
         );
     }
 
-    private generateTemporaryPassword(): string {
-        return `A${randomBytes(6).toString('hex')}`;
-    }
-
     async findManyWithPagination({
         filterOptions,
         sortOptions,
@@ -97,7 +89,10 @@ export class BookingsRepository {
             .createQueryBuilder('booking')
             .leftJoinAndSelect('booking.trip', 'trip')
             .leftJoinAndSelect('trip.route', 'route')
-            .leftJoinAndSelect('trip.busCompany', 'busCompany');
+            .leftJoinAndSelect('trip.busCompany', 'busCompany')
+            .leftJoinAndSelect('trip.tripStops', 'tripStops')
+            .leftJoinAndSelect('tripStops.stop', 'routeStop')
+            .leftJoinAndSelect('routeStop.station', 'stopStation');
 
         if (filterOptions?.userId) qb.andWhere('booking.userId = :userId', { userId: filterOptions.userId });
         if (filterOptions?.tripId) qb.andWhere('booking.tripId = :tripId', { tripId: filterOptions.tripId });
@@ -130,6 +125,19 @@ export class BookingsRepository {
             .take(paginationOptions.limit)
             .getMany();
 
+        // Load seats for all bookings in one query
+        const bookingIds = entities.map((e) => e.bookingId);
+        const allSeats = bookingIds.length
+            ? await this.bookingSeatRepo.find({ where: { bookingId: In(bookingIds) } })
+            : [];
+        const seatIds = [...new Set(allSeats.map((s) => s.seatId))];
+        const seatCodeMap = await this.findSeatCodeMapBySeatIds(seatIds);
+        const seatsByBooking = new Map<string, BookingSeatEntity[]>();
+        for (const s of allSeats) {
+            if (!seatsByBooking.has(s.bookingId)) seatsByBooking.set(s.bookingId, []);
+            seatsByBooking.get(s.bookingId)!.push(s);
+        }
+
         return {
             meta: {
                 page: paginationOptions.page,
@@ -137,7 +145,9 @@ export class BookingsRepository {
                 totalPages: Math.ceil(total / paginationOptions.limit),
                 totalItems: total,
             },
-            result: entities.map((e) => BookingMapper.toDomain(e)),
+            result: entities.map((e) =>
+                BookingMapper.toDomain(e, seatsByBooking.get(e.bookingId), seatCodeMap),
+            ),
         };
     }
 
@@ -150,6 +160,25 @@ export class BookingsRepository {
         const seats = await this.bookingSeatRepo.find({ where: { bookingId: id } });
         const seatCodeMap = await this.findSeatCodeMapBySeatIds(seats.map((seat) => seat.seatId));
         return BookingMapper.toDomain(entity, seats, seatCodeMap);
+    }
+
+    async getBookingSeatLayout(bookingId: string): Promise<{ seatId: string; seatCode: string; row: number; col: number; floor: number; isBooked: boolean }[]> {
+        const booking = await this.bookingRepo.findOne({ where: { bookingId }, relations: ['trip'] });
+        if (!booking?.trip?.busVersionId) return [];
+
+        const allSeats = await this.bookingRepo.query(
+            `SELECT s.seat_id AS "seatId", s.seat_code AS "seatCode", s.row, s.col, s.floor
+             FROM seats s
+             INNER JOIN bus_version_layouts bvl ON bvl.seat_layout_id = s.seat_layout_id
+             WHERE bvl.bus_version_id = $1`,
+            [booking.trip.busVersionId],
+        );
+
+        const bookedSeatIds = new Set(
+            (await this.bookingSeatRepo.find({ where: { bookingId } })).map((s) => s.seatId),
+        );
+
+        return allSeats.map((s: any) => ({ ...s, isBooked: bookedSeatIds.has(s.seatId) }));
     }
 
     async findEntityById(id: string): Promise<NullableType<BookingEntity>> {
@@ -207,32 +236,20 @@ export class BookingsRepository {
 
     async create(userId: string | null, dto: CreateBookingDto, companyId?: string): Promise<Booking> {
         return this.dataSource.transaction(async (manager) => {
-            const userRepo = manager.getRepository(UserEntity);
             let resolvedUserId = userId ?? undefined;
 
             if (!resolvedUserId) {
-                const phoneValue = dto.passengerPhone ?? '';
-                const existingUser = await userRepo.findOne({
-                    where: [
-                        { email: dto.passengerEmail },
-                        ...(phoneValue ? [{ phone: phoneValue }] : []),
-                    ],
+                const userRepo = manager.getRepository(UserEntity);
+                const newUser = userRepo.create({
+                    fullName: dto.passengerName ?? dto.passengerEmail,
+                    email: dto.passengerEmail,
+                    phone: dto.passengerPhone,
+                    address: '',
+                    isVerified: false,
+                    provider: 'booking-phone',
                 });
-
-                if (existingUser) {
-                    resolvedUserId = existingUser.userId;
-                } else {
-                    const newUser = userRepo.create({
-                        fullName: dto.passengerName ?? dto.passengerEmail,
-                        email: dto.passengerEmail,
-                        phone: phoneValue,
-                        address: '',
-                        password: this.generateTemporaryPassword(),
-                        isVerified: false,
-                    });
-                    const savedUser = await userRepo.save(newUser);
-                    resolvedUserId = savedUser.userId;
-                }
+                const savedUser = await userRepo.save(newUser);
+                resolvedUserId = savedUser.userId;
             }
 
             // Verify trip exists and is active

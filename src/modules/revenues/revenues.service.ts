@@ -17,18 +17,17 @@ export class RevenuesService {
     }
 
     findCompany(companyId: string, query: QueryDto<FilterRevenueDto, SortRevenueDto>) {
-        if (!companyId) {
-            throw new BadRequestException('company_id_required');
-        }
-        query.filters = {
-            ...query.filters,
-            companyId,
-        };
+        if (!companyId) throw new BadRequestException('company_id_required');
+        query.filters = { ...query.filters, companyId };
         return this.revenuesRepository.findManyWithPagination({
             filterOptions: query.filters,
             sortOptions: query.sort,
             paginationOptions: { page: query.page || 1, limit: query.limit || 10 },
         });
+    }
+
+    getStats(filters?: FilterRevenueDto | null) {
+        return this.revenuesRepository.getStats(filters);
     }
 
     create(dto: CreateRevenueDto) {

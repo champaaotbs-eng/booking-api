@@ -31,9 +31,9 @@ export class CreateBookingDto {
     @IsEmail({}, { message: i18nValidationMessage<I18nTranslations>('validation.INVALID_EMAIL') })
     passengerEmail: string;
 
-    @IsOptional()
+    @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
     @IsString()
-    passengerPhone?: string;
+    passengerPhone: string;
 }
 
 export class CancelBookingDto {

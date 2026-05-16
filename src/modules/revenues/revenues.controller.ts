@@ -1,22 +1,36 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, ForbiddenException, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { RevenuesService } from './revenues.service';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterRevenueDto, SortRevenueDto } from './dto/query-revenue.dto';
+import { JwtAuthGuard } from 'modules/auth/guard/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller()
 export class RevenuesController {
     constructor(private readonly revenuesService: RevenuesService) { }
 
-    @Get('admin/revenues')
-    findAdmin(@Query() query: QueryDto<FilterRevenueDto, SortRevenueDto>) {
+    @Get('revenues')
+    find(@Req() req: any, @Query() query: QueryDto<FilterRevenueDto, SortRevenueDto>) {
+        const user = req.user;
+        if (!user?.adminId) throw new ForbiddenException();
+
+        if (user.busCompanyId) {
+            // Company admin — scope to own company
+            return this.revenuesService.findCompany(user.busCompanyId, query);
+        }
         return this.revenuesService.findAdmin(query);
     }
 
-    @Get('company/revenues')
-    findCompany(
-        @Query('companyId') companyId: string,
-        @Query() query: QueryDto<FilterRevenueDto, SortRevenueDto>,
-    ) {
-        return this.revenuesService.findCompany(companyId, query);
+    @Get('revenues/stats')
+    getStats(@Req() req: any, @Query('filters') filtersRaw?: string) {
+        const user = req.user;
+        if (!user?.adminId) throw new ForbiddenException();
+
+        const filters = filtersRaw ? JSON.parse(filtersRaw) as FilterRevenueDto : undefined;
+
+        if (user.busCompanyId) {
+            return this.revenuesService.getStats({ ...filters, companyId: user.busCompanyId });
+        }
+        return this.revenuesService.getStats(filters);
     }
 }

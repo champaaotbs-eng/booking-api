@@ -9,6 +9,9 @@ import { MailService } from '@/modules/mail/mail.service';
 import { UsersService } from '@/modules/users/users.service';
 import dayjs from 'dayjs';
 import { PaymentWebhookDto } from './dto/payment-webhook.dto';
+import { normalizeVietnamesePhone } from '@/utils/phone.util';
+import { ConfigService } from '@nestjs/config';
+import { AllConfigType } from '@/config/config.type';
 
 @Injectable()
 export class BookingsService {
@@ -16,6 +19,7 @@ export class BookingsService {
         private readonly bookingsRepository: BookingsRepository,
         private readonly mailService: MailService,
         private readonly usersService: UsersService,
+        private readonly configService: ConfigService<AllConfigType>,
     ) { }
 
     findAdmin(query: QueryDto<FilterBookingDto, SortBookingDto>) {
@@ -41,6 +45,10 @@ export class BookingsService {
         });
     }
 
+    getBookingSeatLayout(bookingId: string) {
+        return this.bookingsRepository.getBookingSeatLayout(bookingId);
+    }
+
     findMy(userId: string, query: QueryDto<FilterBookingDto, SortBookingDto>) {
         query.filters = { ...query.filters, userId };
         return this.bookingsRepository.findManyWithPagination({
@@ -57,8 +65,39 @@ export class BookingsService {
         return booking;
     }
 
-    create(userId: string | null, dto: CreateBookingDto) {
-        return this.bookingsRepository.create(userId, dto);
+    async create(
+        actor: { userId?: string; email?: string } | undefined,
+        dto: CreateBookingDto,
+    ) {
+        const normalizedEmail = dto.passengerEmail.trim();
+        let normalizedPhone: string;
+        try {
+            normalizedPhone = normalizeVietnamesePhone(dto.passengerPhone);
+        } catch {
+            throw new BadRequestException('invalid_phone');
+        }
+
+        const payload = {
+            ...dto,
+            passengerEmail: normalizedEmail,
+            passengerPhone: normalizedPhone,
+        };
+
+        if (actor?.userId) {
+            const actorEmail = actor.email?.trim().toLowerCase() ?? null;
+            if (actorEmail && actorEmail !== normalizedEmail.toLowerCase()) {
+                throw new ForbiddenException('booking_email_mismatch_requires_reauth');
+            }
+
+            return this.bookingsRepository.create(actor.userId, payload);
+        }
+
+        const existingUser = await this.usersService.findByEmail(normalizedEmail).catch(() => null);
+        if (existingUser) {
+            throw new ForbiddenException('email_already_registered_login_required');
+        }
+
+        return this.bookingsRepository.create(null, payload);
     }
 
     createCompany(companyId: string, dto: CreateBookingDto) {
@@ -72,6 +111,15 @@ export class BookingsService {
         const booking = await this.bookingsRepository.findById(id);
         if (!booking) throw new NotFoundException('booking_not_found');
         if (booking.userId !== userId) throw new ForbiddenException('forbidden_booking_access');
+
+        const departureTime = booking.tripInfo?.departureTime ? new Date(booking.tripInfo.departureTime) : null;
+        if (departureTime) {
+            const cutoffHours = this.configService.get('app.bookingCancelCutoffHours', { infer: true }) ?? 3;
+            const cutoffTime = departureTime.getTime() - cutoffHours * 60 * 60 * 1000;
+            if (Date.now() >= cutoffTime) {
+                throw new ForbiddenException('booking_cancel_cutoff_passed');
+            }
+        }
 
         const cancellableStatuses: BookingStatus[] = [
             BookingStatus.PENDING_PAYMENT,

@@ -4,6 +4,8 @@ import { SettlementStatus } from '../entities/settlement.entity';
 export class FilterSettlementDto {
     companyId?: string;
     status?: SettlementStatus;
+    fromDate?: string;
+    toDate?: string;
 }
 
 export class SortSettlementDto {

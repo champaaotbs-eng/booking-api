@@ -11,6 +11,7 @@ interface AuthPayload extends Partial<User> {
     fullName?: string
     roleId?: string | number
     modules?: string[]
+    busCompanyId?: string | null
 }
 
 @Injectable()
@@ -31,6 +32,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                 fullName: payload.fullName,
                 roleId: payload.roleId,
                 modules: payload.modules ?? [],
+                busCompanyId: payload.busCompanyId ?? null,
             }
         }
 
@@ -39,6 +41,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             userId,
             fullName,
             email,
+            phone: payload.phone,
             role,
             modules: payload.modules ?? [],
         }

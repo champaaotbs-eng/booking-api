@@ -2,7 +2,6 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { I18nService } from 'nestjs-i18n';
 import { I18nTranslations } from '@/generated/i18n.generated';
 import { UserEntity } from 'modules/users/entities/user.entity';
-import * as bcrypt from 'bcrypt';
 import { User } from './user.domain';
 import { FilesService } from 'modules/files/files.service';
 import { UserRepository } from './user.repository';
@@ -11,6 +10,7 @@ import { PaginationResponseDto } from 'utils/types/pagination-response.dto';
 import { FilterUserDto, SortUserDto } from './dto/query-user.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { normalizeVietnamesePhone } from '@/utils/phone.util';
 
 @Injectable()
 export class UsersService {
@@ -76,15 +76,11 @@ export class UsersService {
   }
 
   async findByPhone(phone: string): Promise<UserEntity | null> {
-    return await this.userRepository.findByPhone(phone);
-  }
-
-  isValidPassword(password: string, hash: string): Promise<boolean> {
-    return bcrypt.compare(password, hash);
+    return await this.userRepository.findByPhone(normalizeVietnamesePhone(phone));
   }
 
   async updateUserToken(user: any, refreshToken: string) {
-    return await this.userRepository.updateUserRefreshToken(user.id, refreshToken);
+    return await this.userRepository.updateUserRefreshToken(user.userId ?? user.id, refreshToken);
   }
 
   async findUserByToken(role: any, refreshToken: string): Promise<UserEntity> {
@@ -116,13 +112,43 @@ export class UsersService {
     });
   }
 
-
-  async resetPassword(email: string, newPassword: string) {
-    const user = await this.findByEmail(email);
-    return await this.userRepository.update(user.userId, { password: newPassword });
-  }
-
   async setVerifiedEmail(id: User['userId']) {
     return await this.userRepository.update(id, { isVerified: true });
+  }
+
+  async createEmailAuthUser(payload: {
+    fullName: string;
+    email: string;
+    phone?: string;
+    socialId?: string;
+    provider?: string;
+    isVerified?: boolean;
+  }): Promise<User> {
+    const normalizedEmail = payload.email.trim();
+    const emailExists = await this.userRepository.isEmailExist(normalizedEmail);
+    if (emailExists) {
+      throw new BadRequestException('email_already_exists');
+    }
+
+    const normalizedPhone = payload.phone?.trim()
+      ? normalizeVietnamesePhone(payload.phone)
+      : '';
+
+    if (normalizedPhone) {
+      const phoneExists = await this.userRepository.isPhoneExist(normalizedPhone);
+      if (phoneExists) {
+        throw new BadRequestException('phone_already_exists');
+      }
+    }
+
+    return this.userRepository.create({
+      fullName: payload.fullName,
+      email: normalizedEmail,
+      phone: normalizedPhone,
+      address: '',
+      isVerified: payload.isVerified ?? false,
+      provider: payload.provider,
+      socialId: payload.socialId,
+    } as CreateUserDto);
   }
 }

@@ -3,4 +3,5 @@ export type OtpConfig = {
   digits: number;
   period: number;
   algorithm: string;
+  bypassEnabled: boolean;
 };

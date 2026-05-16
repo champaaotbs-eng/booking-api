@@ -29,6 +29,7 @@ import { HttpModule } from '@nestjs/axios';
 import paymentConfig from 'config/configs/payment.config';
 import mailerConfig from 'config/configs/mailer.config';
 import otpConfig from 'config/configs/otp.config';
+import esmsConfig from 'config/configs/esms.config';
 import { CacheModule } from '@nestjs/cache-manager';
 import { CacheConfigService } from 'cache/cache-config.service';
 import { DataSource } from 'typeorm';
@@ -58,7 +59,8 @@ import { StationsModule } from 'modules/stations/stations.module';
         jwtConfig,
         cloudinaryConfig,
         mailerConfig,
-        otpConfig
+        otpConfig,
+        esmsConfig,
       ],
       envFilePath: ['.env'],
     }),

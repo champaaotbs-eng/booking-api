@@ -27,6 +27,7 @@ export class Trip {
     @Allow() arrivalTime: Date;
     @Allow() basePrice: number;
     @Allow() status: TripStatus;
+    @Allow() hasBookings?: boolean;
     @Allow() isPublished: boolean;
     @Allow() cancelReason?: string;
     @Allow() createdAt: Date;
