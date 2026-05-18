@@ -23,10 +23,6 @@ export class OtpService {
         @Inject(CACHE_MANAGER)
         private readonly cacheManager: Cache,
     ) {
-        const nodeEnv = this.configService.get('app.nodeEnv', { infer: true });
-        if (nodeEnv === 'production' && this.isBypassEnabled()) {
-            throw new Error('OTP_BYPASS_ENABLED cannot be true in production');
-        }
     }
 
     async generateOtp(identityValue: User['userId'] | string, identityType: OtpIdentityType = 'user_id'): Promise<string> {
