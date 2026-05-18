@@ -10,6 +10,13 @@ export class PaymentMapper {
         domain.provider = raw.provider;
         domain.method = raw.method;
         domain.evidence = raw.evidence;
+        domain.confirmedByAdminId = raw.confirmedByAdminId;
+        domain.confirmedCompanyId = raw.confirmedCompanyId;
+        domain.confirmedAt = raw.confirmedAt;
+        domain.confirmationNote = raw.confirmationNote;
+        domain.collectedAmount = raw.collectedAmount === undefined || raw.collectedAmount === null
+            ? undefined
+            : Number(raw.collectedAmount);
         domain.amount = Number(raw.amount);
         domain.status = raw.status;
         domain.transactionCode = raw.transactionCode;

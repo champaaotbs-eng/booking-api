@@ -2,9 +2,7 @@ import { Controller, ForbiddenException, Get, Query, Req, UseGuards } from '@nes
 import { RevenuesService } from './revenues.service';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterRevenueDto, SortRevenueDto } from './dto/query-revenue.dto';
-import { JwtAuthGuard } from 'modules/auth/guard/jwt-auth.guard';
 
-@UseGuards(JwtAuthGuard)
 @Controller()
 export class RevenuesController {
     constructor(private readonly revenuesService: RevenuesService) { }

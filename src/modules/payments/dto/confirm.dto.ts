@@ -1,4 +1,4 @@
-export class ConfirmDto {
+export class ConfirmPaymentDto {
     id: number;                 // ID giao dịch trên SePay
     gateway: string;            // Brand name của ngân hàng
     transactionDate: string;    // Thời gian xảy ra giao dịch phía ngân hàng

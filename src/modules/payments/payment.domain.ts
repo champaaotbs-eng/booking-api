@@ -8,6 +8,11 @@ export class Payment {
     @Allow() provider?: PaymentProvider;
     @Allow() method?: PaymentMethod;
     @Allow() evidence?: string;
+    @Allow() confirmedByAdminId?: string;
+    @Allow() confirmedCompanyId?: string;
+    @Allow() confirmedAt?: Date;
+    @Allow() confirmationNote?: string;
+    @Allow() collectedAmount?: number;
     @Allow() amount: number;
     @Allow() status: PaymentStatus;
     @Allow() transactionCode?: string;

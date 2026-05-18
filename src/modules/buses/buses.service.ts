@@ -22,6 +22,17 @@ export class BusesService {
         return bus;
     }
 
+    async getCurrentLocation(id: string) {
+        await this.findOne(id);
+        return this.busesRepository.getCurrentLocationFromTrips(id);
+    }
+
+    async getCurrentLocationByVersion(busVersionId: string) {
+        const busId = await this.busesRepository.findBusIdByVersionId(busVersionId);
+        if (!busId) throw new NotFoundException('bus_version_not_found');
+        return this.busesRepository.getCurrentLocationFromTrips(busId);
+    }
+
     create(dto: CreateBusDto) {
         return this.busesRepository.create(dto);
     }

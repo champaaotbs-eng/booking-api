@@ -21,6 +21,21 @@ export class TripsController {
         return this.tripsService.searchForCustomer(dto);
     }
 
+    @Get('/bus-availability')
+    checkBusAvailability(
+        @Query('busVersionId') busVersionId: string,
+        @Query('departureTime') departureTime: string,
+        @Query('arrivalTime') arrivalTime: string,
+        @Query('excludeTripId') excludeTripId?: string,
+    ) {
+        return this.tripsService.checkBusAvailability({
+            busVersionId,
+            departureTime,
+            arrivalTime,
+            excludeTripId,
+        });
+    }
+
     @Get('/:id')
     @Public()
     findOne(@Param('id') id: string) {

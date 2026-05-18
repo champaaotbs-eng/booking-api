@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 import { I18nTranslations } from '@/generated/i18n.generated';
 import { PaymentMethod, PaymentProvider } from '../entities/payment.entity';
@@ -21,26 +21,19 @@ export class InitiatePaymentDto {
     returnUrl?: string;
 }
 
-export class VnpayCallbackDto {
-    vnp_TxnRef: string;
-    vnp_ResponseCode: string;
-    vnp_TransactionNo?: string;
-    vnp_Amount?: string;
-    vnp_SecureHash?: string;
-    [key: string]: any;
-}
-
-export class MomoCallbackDto {
-    orderId: string;
-    resultCode: number;
-    transId?: string;
-    amount?: string;
-    signature?: string;
-    [key: string]: any;
-}
-
 export class ConfirmOnBoardPaymentDto {
     @IsOptional()
     @IsString()
+    @MaxLength(500)
     evidence?: string;
+
+    @IsOptional()
+    @IsString()
+    @MaxLength(1000)
+    note?: string;
+
+    @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
+    @IsNumber()
+    @Min(0)
+    collectedAmount: number;
 }

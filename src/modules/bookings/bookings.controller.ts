@@ -4,7 +4,6 @@ import { Public, UserInfo } from '@/decorator/customize.decorator';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterBookingDto, SortBookingDto } from './dto/query-booking.dto';
 import { CreateBookingDto } from './dto/booking.dto';
-import { PaymentWebhookDto } from './dto/payment-webhook.dto';
 
 @Controller()
 export class BookingsController {
@@ -17,8 +16,8 @@ export class BookingsController {
     }
 
     @Post('company/bookings')
-    createCompany(@Query('companyId') companyId: string, @Body() dto: CreateBookingDto) {
-        return this.bookingsService.createCompany(companyId, dto);
+    createCompany(@UserInfo() user: { adminId?: string; busCompanyId?: string }, @Body() dto: CreateBookingDto) {
+        return this.bookingsService.createCompany(user?.busCompanyId, dto);
     }
 
     @Get('bookings/my')
@@ -45,20 +44,6 @@ export class BookingsController {
         return this.bookingsService.cancel(id, user.userId);
     }
 
-    /** Payment gateway webhook — marks booking as CONFIRMED and sends ticket email */
-    // @Public()
-    // @Post('bookings/webhook/payment')
-    // confirmPayment(@Body() dto: PaymentWebhookDto) {
-    //     return this.bookingsService.confirmPayment(dto.bookingCode);
-    // }
-
-    /** Vietcombank bank transfer webhook — parses BOOKING_CODE from transfer content */
-    @Public()
-    @Post('bookings/webhook/bank-transfer')
-    bankTransferWebhook(@Body() dto: PaymentWebhookDto) {
-        return this.bookingsService.handleBankTransferWebhook(dto);
-    }
-
     /** Manually re-send ticket email (authenticated) */
     @Post('bookings/:id/issue-ticket')
     issueTicket(@Param('id') id: string) {
@@ -72,10 +57,10 @@ export class BookingsController {
 
     @Get('company/bookings')
     findCompany(
-        @Query('companyId') companyId: string,
+        @UserInfo() user: { adminId?: string; busCompanyId?: string },
         @Query() query: QueryDto<FilterBookingDto, SortBookingDto>,
     ) {
-        return this.bookingsService.findCompany(companyId, query);
+        return this.bookingsService.findCompany(user?.busCompanyId, query);
     }
 
     @Get('bookings/:id/seat-layout')

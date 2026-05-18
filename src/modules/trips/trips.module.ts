@@ -11,6 +11,7 @@ import { SeatLayoutEntity } from '@/modules/seat-layouts/entities/seat-layout.en
 import { BusVersionLayoutEntity } from '@/modules/seat-layouts/entities/bus-version-layout.entity';
 import { TripSeatEntity } from './entities/trip-seat.entity';
 import { SeatLayoutsRepository } from '@/modules/seat-layouts/seat-layouts.repository';
+import { BusVersionEntity } from '@/modules/buses/entities/bus-version.entity';
 
 @Module({
     imports: [
@@ -21,6 +22,7 @@ import { SeatLayoutsRepository } from '@/modules/seat-layouts/seat-layouts.repos
             SeatLayoutEntity,
             BusVersionLayoutEntity,
             TripSeatEntity,
+            BusVersionEntity,
         ]),
         RoutesModule,
     ],

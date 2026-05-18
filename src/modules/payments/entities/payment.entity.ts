@@ -59,6 +59,21 @@ export class PaymentEntity {
     @Column({ name: 'evidence', nullable: true })
     evidence?: string;
 
+    @Column({ name: 'confirmed_by_admin_id', nullable: true })
+    confirmedByAdminId?: string;
+
+    @Column({ name: 'confirmed_company_id', nullable: true })
+    confirmedCompanyId?: string;
+
+    @Column({ name: 'confirmed_at', type: 'timestamptz', nullable: true })
+    confirmedAt?: Date;
+
+    @Column({ name: 'confirmation_note', type: 'text', nullable: true })
+    confirmationNote?: string;
+
+    @Column({ name: 'collected_amount', type: 'decimal', precision: 10, scale: 2, nullable: true })
+    collectedAmount?: number;
+
     @Column({ name: 'amount', type: 'decimal', precision: 10, scale: 2, nullable: true })
     amount: number;
 

@@ -4,6 +4,7 @@ import { Not, Repository, SelectQueryBuilder } from 'typeorm';
 import { BusEntity } from './entities/bus.entity';
 import { BusVersionEntity, BusVersionStatus } from './entities/bus-version.entity';
 import { TripEntity } from '@/modules/trips/entities/trip.entity';
+import { TripStatus } from '@/modules/trips/entities/trip.entity';
 import { BusVersionLayoutEntity } from '@/modules/seat-layouts/entities/bus-version-layout.entity';
 import { BusMapper, BusVersionMapper } from './bus.mapper';
 import { Bus, BusVersion } from './bus.domain';
@@ -17,6 +18,29 @@ import {
 import { IPaginationOptions } from '@/utils/types/pagination-options';
 import { PaginationResponseDto } from '@/utils/types/pagination-response.dto';
 import { NullableType } from '@/utils/types/nullable.type';
+
+type BusTripLocation = {
+    label?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+};
+
+export type BusCurrentLocation = {
+    busId: string;
+    available: boolean;
+    state: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'UNKNOWN';
+    locationType: 'SOURCE' | 'ROUTE' | 'DESTINATION' | 'UNKNOWN';
+    tripId?: string;
+    label?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+    source?: BusTripLocation;
+    destination?: BusTripLocation;
+    departureTime?: Date;
+    arrivalTime?: Date;
+};
 
 @Injectable()
 export class BusesRepository {
@@ -207,6 +231,126 @@ export class BusesRepository {
             .where('bus.busId = :id', { id })
             .getOne();
         return entity ? BusMapper.toDomain(entity) : null;
+    }
+
+    async findBusIdByVersionId(busVersionId: string): Promise<string | null> {
+        const version = await this.versionRepo.findOne({
+            where: { busVersionId },
+            select: { busVersionId: true, busId: true },
+        });
+        return version?.busId ?? null;
+    }
+
+    private getTripEdgeLocations(trip: TripEntity): {
+        source?: BusTripLocation;
+        destination?: BusTripLocation;
+    } {
+        const sortedStops = [...(trip.tripStops ?? [])].sort((a, b) => a.stopOrder - b.stopOrder);
+        const firstStation = sortedStops[0]?.stop?.station;
+        const lastStation = sortedStops[sortedStops.length - 1]?.stop?.station;
+
+        return {
+            source: firstStation
+                ? {
+                    label: firstStation.label,
+                    address: firstStation.address,
+                    latitude: Number(firstStation.latitude),
+                    longitude: Number(firstStation.longitude),
+                }
+                : undefined,
+            destination: lastStation
+                ? {
+                    label: lastStation.label,
+                    address: lastStation.address,
+                    latitude: Number(lastStation.latitude),
+                    longitude: Number(lastStation.longitude),
+                }
+                : undefined,
+        };
+    }
+
+    private toCurrentLocation(busId: string, trip: TripEntity | null, now: Date): BusCurrentLocation {
+        if (!trip) {
+            return {
+                busId,
+                available: false,
+                state: 'UNKNOWN',
+                locationType: 'UNKNOWN',
+            };
+        }
+
+        const { source, destination } = this.getTripEdgeLocations(trip);
+        const base = {
+            busId,
+            available: true,
+            tripId: trip.tripId,
+            departureTime: trip.departureTime,
+            arrivalTime: trip.arrivalTime,
+        };
+
+        if (now < trip.departureTime) {
+            return {
+                ...base,
+                state: 'NOT_STARTED',
+                locationType: 'SOURCE',
+                label: source?.label,
+                address: source?.address,
+                latitude: source?.latitude,
+                longitude: source?.longitude,
+            };
+        }
+
+        if (now >= trip.arrivalTime) {
+            return {
+                ...base,
+                state: 'COMPLETED',
+                locationType: 'DESTINATION',
+                label: destination?.label,
+                address: destination?.address,
+                latitude: destination?.latitude,
+                longitude: destination?.longitude,
+            };
+        }
+
+        return {
+            ...base,
+            state: 'IN_PROGRESS',
+            locationType: 'ROUTE',
+            source,
+            destination,
+        };
+    }
+
+    private buildBusTripLocationQuery(busId: string) {
+        return this.tripRepo
+            .createQueryBuilder('trip')
+            .innerJoin(BusVersionEntity, 'busVersion', 'busVersion.busVersionId = trip.busVersionId')
+            .leftJoinAndSelect('trip.tripStops', 'tripStops')
+            .leftJoinAndSelect('tripStops.stop', 'routeStop')
+            .leftJoinAndSelect('routeStop.station', 'stopLocation')
+            .where('busVersion.busId = :busId', { busId })
+            .andWhere('trip.status = :status', { status: TripStatus.ACTIVE });
+    }
+
+    async getCurrentLocationFromTrips(busId: string): Promise<BusCurrentLocation> {
+        const now = new Date();
+        const activeOrUpcomingTrip = await this.buildBusTripLocationQuery(busId)
+            .andWhere('trip.arrivalTime >= :now', { now })
+            .orderBy('trip.departureTime', 'ASC')
+            .addOrderBy('tripStops.stopOrder', 'ASC')
+            .getOne();
+
+        if (activeOrUpcomingTrip) {
+            return this.toCurrentLocation(busId, activeOrUpcomingTrip, now);
+        }
+
+        const completedTrip = await this.buildBusTripLocationQuery(busId)
+            .andWhere('trip.arrivalTime < :now', { now })
+            .orderBy('trip.arrivalTime', 'DESC')
+            .addOrderBy('tripStops.stopOrder', 'ASC')
+            .getOne();
+
+        return this.toCurrentLocation(busId, completedTrip ?? null, now);
     }
 
     async create(dto: CreateBusDto): Promise<Bus> {

@@ -64,8 +64,66 @@ export class TripsService {
         }
     }
 
+    private async getCandidateBusConflict(input: {
+        busVersionId?: string;
+        departureTime: string | Date;
+        arrivalTime: string | Date;
+        excludeTripId?: string;
+    }) {
+        if (!input.busVersionId) return null;
+
+        const busId = await this.tripsRepository.findBusVersionBusId(input.busVersionId);
+        if (!busId) throw new BadRequestException('bus_version_not_found');
+
+        return this.tripsRepository.findOverlappingBusTrip({
+            busId,
+            departureTime: new Date(input.departureTime),
+            arrivalTime: new Date(input.arrivalTime),
+            excludeTripId: input.excludeTripId,
+        });
+    }
+
+    private async assertBusAvailable(input: {
+        busVersionId?: string;
+        departureTime: string | Date;
+        arrivalTime: string | Date;
+        excludeTripId?: string;
+    }) {
+        const conflict = await this.getCandidateBusConflict(input);
+        if (conflict) {
+            throw new BadRequestException('bus_not_available_for_trip_time');
+        }
+    }
+
+    async checkBusAvailability(input: {
+        busVersionId?: string;
+        departureTime: string;
+        arrivalTime: string;
+        excludeTripId?: string;
+    }) {
+        this.validateTripTimeRange(input.departureTime, input.arrivalTime);
+        const conflict = await this.getCandidateBusConflict(input);
+        return {
+            available: !conflict,
+            conflictTrip: conflict
+                ? {
+                    tripId: conflict.tripId,
+                    departureTime: conflict.departureTime,
+                    arrivalTime: conflict.arrivalTime,
+                    fromLocationName: conflict.fromLocationName,
+                    toLocationName: conflict.toLocationName,
+                }
+                : null,
+        };
+    }
+
     async create(dto: CreateTripDto) {
         this.validateTripTimeRange(dto.departureTime, dto.arrivalTime);
+        await this.assertBusAvailable({
+            busVersionId: dto.busVersionId,
+            departureTime: dto.departureTime,
+            arrivalTime: dto.arrivalTime,
+        });
 
         const routeStops = await this.routesRepository.findForTripGeneration(
             dto.routeId,
@@ -116,8 +174,24 @@ export class TripsService {
             }
         }
 
-        if (dto.departureTime && dto.arrivalTime) {
-            this.validateTripTimeRange(dto.departureTime, dto.arrivalTime);
+        const candidateBusVersionId = dto.busVersionId ?? trip.busVersionId;
+        const candidateDepartureTime = dto.departureTime ?? trip.departureTime;
+        const candidateArrivalTime = dto.arrivalTime ?? trip.arrivalTime;
+
+        if (dto.departureTime || dto.arrivalTime) {
+            this.validateTripTimeRange(
+                new Date(candidateDepartureTime).toISOString(),
+                new Date(candidateArrivalTime).toISOString(),
+            );
+        }
+
+        if (dto.busVersionId || dto.departureTime || dto.arrivalTime) {
+            await this.assertBusAvailable({
+                busVersionId: candidateBusVersionId,
+                departureTime: candidateDepartureTime,
+                arrivalTime: candidateArrivalTime,
+                excludeTripId: id,
+            });
         }
 
         const updated = await this.tripsRepository.update(id, dto);

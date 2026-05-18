@@ -45,6 +45,12 @@ export class BookingEntity {
     @Column({ name: 'trip_id' })
     tripId: string;
 
+    @Column({ name: 'pickup_stop_id', nullable: true })
+    pickupStopId?: string;
+
+    @Column({ name: 'dropoff_stop_id', nullable: true })
+    dropoffStopId?: string;
+
     @Column({ name: 'total_amount', type: 'decimal', precision: 10, scale: 2, nullable: true })
     totalAmount: number;
 

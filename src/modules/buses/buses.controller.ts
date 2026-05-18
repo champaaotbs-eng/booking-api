@@ -13,9 +13,19 @@ export class BusesController {
         return this.busesService.findAll(query);
     }
 
+    @Get('versions/:busVersionId/current-location')
+    getCurrentLocationByVersion(@Param('busVersionId', new ParseUUIDPipe()) busVersionId: string) {
+        return this.busesService.getCurrentLocationByVersion(busVersionId);
+    }
+
     @Get(':id')
     findOne(@Param('id', new ParseUUIDPipe()) id: string) {
         return this.busesService.findOne(id);
+    }
+
+    @Get(':id/current-location')
+    getCurrentLocation(@Param('id', new ParseUUIDPipe()) id: string) {
+        return this.busesService.getCurrentLocation(id);
     }
 
     @Post('')

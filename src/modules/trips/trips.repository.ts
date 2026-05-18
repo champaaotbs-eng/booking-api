@@ -14,6 +14,7 @@ import { NullableType } from '@/utils/types/nullable.type';
 import { BookingSeatEntity } from '@/modules/bookings/entities/booking-seat.entity';
 import { BookingStatus } from '@/modules/bookings/entities/booking.entity';
 import { RouteStopType } from 'modules/routes/entities/route-stop.entity';
+import { BusVersionEntity } from '@/modules/buses/entities/bus-version.entity';
 
 type TripStopSeed = {
     stopId: string;
@@ -48,6 +49,8 @@ export class TripsRepository {
         private readonly bookingSeatRepo: Repository<BookingSeatEntity>,
         @InjectRepository(TripSeatEntity)
         private readonly tripSeatRepo: Repository<TripSeatEntity>,
+        @InjectRepository(BusVersionEntity)
+        private readonly busVersionRepo: Repository<BusVersionEntity>,
     ) { }
 
     private applyFilters(qb: any, filterOptions?: FilterTripDto | null) {
@@ -326,6 +329,44 @@ export class TripsRepository {
                 },
             },
         });
+        return entity ? TripMapper.toDomain(entity) : null;
+    }
+
+    async findBusVersionBusId(busVersionId: string): Promise<string | null> {
+        const row = await this.busVersionRepo.findOne({
+            where: { busVersionId },
+            select: { busVersionId: true, busId: true },
+        });
+        return row?.busId ?? null;
+    }
+
+    async findOverlappingBusTrip(input: {
+        busId: string;
+        departureTime: Date;
+        arrivalTime: Date;
+        excludeTripId?: string;
+    }): Promise<NullableType<Trip>> {
+        const qb = this.tripRepo
+            .createQueryBuilder('trip')
+            .innerJoin(BusVersionEntity, 'busVersion', 'busVersion.busVersionId = trip.busVersionId')
+            .leftJoinAndSelect('trip.route', 'route')
+            .leftJoinAndSelect('trip.busCompany', 'busCompany')
+            .leftJoinAndSelect('trip.busVersion', 'tripBusVersion')
+            .leftJoinAndSelect('tripBusVersion.bus', 'bus')
+            .leftJoinAndSelect('trip.tripStops', 'tripStops')
+            .leftJoinAndSelect('tripStops.stop', 'routeStop')
+            .leftJoinAndSelect('routeStop.station', 'stopLocation')
+            .where('busVersion.busId = :busId', { busId: input.busId })
+            .andWhere('trip.status = :status', { status: 'ACTIVE' })
+            .andWhere('trip.departureTime < :arrivalTime', { arrivalTime: input.arrivalTime })
+            .andWhere('trip.arrivalTime > :departureTime', { departureTime: input.departureTime })
+            .orderBy('trip.departureTime', 'ASC');
+
+        if (input.excludeTripId) {
+            qb.andWhere('trip.tripId != :excludeTripId', { excludeTripId: input.excludeTripId });
+        }
+
+        const entity = await qb.getOne();
         return entity ? TripMapper.toDomain(entity) : null;
     }
 

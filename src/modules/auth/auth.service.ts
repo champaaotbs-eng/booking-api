@@ -219,7 +219,7 @@ export class AuthService {
       return { sent: true, bypassed: true };
     }
 
-    const otp = await this.otpService.generateOtp(user.userId);
+    const otp = await this.otpService.generateOtp(user.userId, 'user_id');
 
     return this.mailService.verifyEmail({
       to: user.email,
@@ -229,7 +229,7 @@ export class AuthService {
 
   async verifyEmail(otp: string, userId: User['userId']) {
     try {
-      const isValidOTP = this.otpService.verifyOtp(otp);
+      const isValidOTP = await this.otpService.verifyOtp(otp, userId, 'user_id');
 
       if (!isValidOTP) throw new BadRequestException('Invalid OTP')
 
@@ -254,7 +254,8 @@ export class AuthService {
   }
 
   async sendLoginOtp(email: string) {
-    const user = await this.usersService.findByEmail(email.trim());
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.usersService.findByEmail(normalizedEmail);
     if (!user) throw new BadRequestException('user_not_found');
     if (!user.email) throw new BadRequestException('user_has_no_email');
 
@@ -262,7 +263,7 @@ export class AuthService {
       return { sent: true, bypassed: true };
     }
 
-    const otp = await this.otpService.generateOtp(user.userId);
+    const otp = await this.otpService.generateOtp(user.email, 'email');
     await this.mailService.verifyEmail({
       to: user.email,
       data: { otp },
@@ -271,25 +272,25 @@ export class AuthService {
   }
 
   async loginWithOtp(email: string, otp: string, response: Response) {
-    const isValidOTP = this.otpService.verifyOtp(otp);
-    if (!isValidOTP) throw new BadRequestException('Invalid OTP');
-
-    const user = await this.usersService.findByEmail(email.trim());
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.usersService.findByEmail(normalizedEmail);
     if (!user) throw new NotFoundException(this.i18nService.t('common.NOT_FOUND', {
       args: { entity: 'user' },
     }));
+    const isValidOTP = await this.otpService.verifyOtp(otp, user.email, 'email');
+    if (!isValidOTP) throw new BadRequestException('Invalid OTP');
 
     return this.login(user as any, response);
   }
 
   async sendCustomerEmailOtp(email: string) {
-    const normalizedEmail = email.trim();
+    const normalizedEmail = email.trim().toLowerCase();
 
     if (this.otpService.isBypassEnabled()) {
       return { sent: true, email: normalizedEmail, bypassed: true };
     }
 
-    const otp = await this.otpService.generateOtp(normalizedEmail);
+    const otp = await this.otpService.generateOtp(normalizedEmail, 'email');
 
     await this.mailService.verifyEmail({
       to: normalizedEmail,
@@ -300,8 +301,8 @@ export class AuthService {
   }
 
   async registerWithEmailOtp(dto: RegisterWithEmailOtpDto, response: Response) {
-    const normalizedEmail = dto.email.trim();
-    const isValidOtp = this.otpService.verifyOtp(dto.otp);
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const isValidOtp = await this.otpService.verifyOtp(dto.otp, normalizedEmail, 'email');
     if (!isValidOtp) throw new BadRequestException('invalid_otp');
 
     const user = await this.usersService.createEmailAuthUser({
@@ -316,8 +317,8 @@ export class AuthService {
   }
 
   async resolveOrCreateWithEmailOtp(dto: ResolveOrCreateEmailOtpDto, response: Response) {
-    const normalizedEmail = dto.email.trim();
-    const isValidOtp = this.otpService.verifyOtp(dto.otp);
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const isValidOtp = await this.otpService.verifyOtp(dto.otp, normalizedEmail, 'email');
     if (!isValidOtp) throw new BadRequestException('invalid_otp');
 
     const existingUser = await this.usersService.findByEmail(normalizedEmail);

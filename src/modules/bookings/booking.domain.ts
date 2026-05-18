@@ -8,6 +8,14 @@ export class BookingSeatItem {
     @Allow() price: number;
 }
 
+export class BookingTripStopInfo {
+    @Allow() tripStopId: string;
+    @Allow() locationName?: string;
+    @Allow() locationAddress?: string;
+    @Allow() pickupTime?: Date;
+    @Allow() dropoffTime?: Date;
+}
+
 export class Booking {
     @Allow() id: string;
     @Allow() bookingCode: string;
@@ -22,6 +30,8 @@ export class Booking {
         fromLocationName?: string;
         toLocationName?: string;
         busCompanyName?: string;
+        pickupStop?: BookingTripStopInfo;
+        dropoffStop?: BookingTripStopInfo;
     };
     @Allow() totalAmount: number;
     @Allow() paymentMethod: PaymentMethod;

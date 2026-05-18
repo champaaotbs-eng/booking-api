@@ -8,7 +8,6 @@ import { PaymentStatus } from '@/modules/payments/entities/payment.entity';
 import { MailService } from '@/modules/mail/mail.service';
 import { UsersService } from '@/modules/users/users.service';
 import dayjs from 'dayjs';
-import { PaymentWebhookDto } from './dto/payment-webhook.dto';
 import { normalizeVietnamesePhone } from '@/utils/phone.util';
 import { ConfigService } from '@nestjs/config';
 import { AllConfigType } from '@/config/config.type';
@@ -30,7 +29,7 @@ export class BookingsService {
         });
     }
 
-    findCompany(companyId: string, query: QueryDto<FilterBookingDto, SortBookingDto>) {
+    findCompany(companyId: string | undefined, query: QueryDto<FilterBookingDto, SortBookingDto>) {
         if (!companyId) {
             throw new BadRequestException('company_id_required');
         }
@@ -65,10 +64,10 @@ export class BookingsService {
         return booking;
     }
 
-    async create(
+    async prepareCreatePayload(
         actor: { userId?: string; email?: string } | undefined,
         dto: CreateBookingDto,
-    ) {
+    ): Promise<CreateBookingDto> {
         const normalizedEmail = dto.passengerEmail.trim();
         let normalizedPhone: string;
         try {
@@ -88,8 +87,7 @@ export class BookingsService {
             if (actorEmail && actorEmail !== normalizedEmail.toLowerCase()) {
                 throw new ForbiddenException('booking_email_mismatch_requires_reauth');
             }
-
-            return this.bookingsRepository.create(actor.userId, payload);
+            return payload;
         }
 
         const existingUser = await this.usersService.findByEmail(normalizedEmail).catch(() => null);
@@ -97,10 +95,18 @@ export class BookingsService {
             throw new ForbiddenException('email_already_registered_login_required');
         }
 
-        return this.bookingsRepository.create(null, payload);
+        return payload;
     }
 
-    createCompany(companyId: string, dto: CreateBookingDto) {
+    async create(
+        actor: { userId?: string; email?: string } | undefined,
+        dto: CreateBookingDto,
+    ) {
+        const payload = await this.prepareCreatePayload(actor, dto);
+        return this.bookingsRepository.create(actor?.userId ?? null, payload);
+    }
+
+    createCompany(companyId: string | undefined, dto: CreateBookingDto) {
         if (!companyId) {
             throw new BadRequestException('company_id_required');
         }
@@ -130,89 +136,13 @@ export class BookingsService {
             throw new ForbiddenException('booking_status_not_cancellable');
         }
 
+        const latestPayment = await this.bookingsRepository.findLatestPaymentByBookingId(id);
+        if (latestPayment?.status === PaymentStatus.PENDING) {
+            await this.bookingsRepository.markPaymentExpired(latestPayment.paymentId);
+        }
+
         await this.bookingsRepository.cancel(id);
         return this.bookingsRepository.findById(id);
-    }
-
-    async confirmPayment(bookingCode: string) {
-        const booking = await this.bookingsRepository.findByCode(bookingCode);
-        if (!booking) throw new NotFoundException('booking_not_found');
-
-        if (booking.status !== BookingStatus.PENDING_PAYMENT) {
-            throw new BadRequestException('booking_not_pending_payment');
-        }
-
-        await this.bookingsRepository.updateStatus(booking.id, BookingStatus.CONFIRMED);
-        const confirmed = await this.bookingsRepository.findById(booking.id);
-
-        // Send ticket email if user has email
-        if (confirmed && confirmed.userId) {
-            try {
-                const user = await this.usersService.findUserById(confirmed.userId);
-                if (user?.email) {
-                    await this.issueTicketEmail(confirmed.id);
-                }
-            } catch {
-                // Non-blocking: email failure should not fail the webhook
-            }
-        }
-
-        return confirmed;
-    }
-
-    async handleBankTransferWebhook(dto: PaymentWebhookDto) {
-        if (dto.transferType !== 'in') {
-            return { success: false, message: 'not_incoming_transfer' };
-        }
-
-        // Extract booking code from content: format "... BOOKING_CODE:XXXX ..."
-        const match = dto.content.match(/BOOKING_CODE:([A-Z0-9]+)/i);
-        if (!match) {
-            return { success: false, message: 'booking_code_not_found_in_content' };
-        }
-
-        const bookingCode = match[1].toUpperCase();
-        const booking = await this.bookingsRepository.findByCode(bookingCode);
-        if (!booking) {
-            return { success: false, message: 'booking_not_found' };
-        }
-
-        if (booking.status !== BookingStatus.PENDING_PAYMENT) {
-            return { success: true, message: 'already_processed' };
-        }
-
-        if (booking.expiresAt && booking.expiresAt.getTime() < Date.now()) {
-            await this.bookingsRepository.updateStatus(booking.id, BookingStatus.EXPIRED);
-            const expiredPayment = await this.bookingsRepository.findLatestPaymentByBookingId(booking.id);
-            if (expiredPayment && expiredPayment.status === PaymentStatus.PENDING) {
-                await this.bookingsRepository.markPaymentExpired(expiredPayment.paymentId);
-            }
-            return { success: false, message: 'booking_expired' };
-        }
-
-        await this.bookingsRepository.updateStatus(booking.id, BookingStatus.CONFIRMED);
-
-        const latestPayment = await this.bookingsRepository.findLatestPaymentByBookingId(booking.id);
-        if (latestPayment && latestPayment.status === PaymentStatus.PENDING) {
-            await this.bookingsRepository.markPaymentPaid(latestPayment.paymentId, {
-                source: 'bank-transfer',
-                referenceCode: dto.referenceCode,
-                transferAmount: dto.transferAmount,
-            });
-        }
-
-        if (booking.userId) {
-            try {
-                const user = await this.usersService.findUserById(booking.userId);
-                if (user?.email) {
-                    await this.issueTicketEmail(booking.id);
-                }
-            } catch {
-                // Non-blocking
-            }
-        }
-
-        return { success: true, bookingCode };
     }
 
     async checkPaymentStatusByCode(bookingCode: string) {

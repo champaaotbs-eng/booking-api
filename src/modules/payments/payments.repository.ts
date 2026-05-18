@@ -54,11 +54,26 @@ export class PaymentsRepository {
         });
     }
 
-    async markConfirmedOnBoard(id: string, evidence?: string): Promise<void> {
+    async markConfirmedOnBoard(
+        id: string,
+        input: {
+            companyId: string;
+            staffAdminId: string;
+            collectedAmount: number;
+            evidence?: string;
+            note?: string;
+        },
+    ): Promise<void> {
+        const now = new Date();
         await this.repo.update({ paymentId: id }, {
             status: PaymentStatus.CONFIRMED_ON_BOARD,
-            evidence,
-            completedAt: new Date(),
+            evidence: input.evidence,
+            confirmedByAdminId: input.staffAdminId,
+            confirmedCompanyId: input.companyId,
+            confirmedAt: now,
+            confirmationNote: input.note,
+            collectedAmount: input.collectedAmount,
+            completedAt: now,
         });
     }
 }

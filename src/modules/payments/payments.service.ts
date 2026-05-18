@@ -1,31 +1,187 @@
 import {
     BadRequestException,
     ForbiddenException,
+    Inject,
     Injectable,
     NotFoundException,
+    UnauthorizedException,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { PaymentsRepository } from './payments.repository';
 import { BookingsRepository } from '@/modules/bookings/bookings.repository';
-import { InitiatePaymentDto, MomoCallbackDto, VnpayCallbackDto } from './dto/payment.dto';
+import { BookingsService } from '@/modules/bookings/bookings.service';
+import { InitiatePaymentDto } from './dto/payment.dto';
+import { ConfirmPaymentDto } from './dto/confirm.dto';
 import { PaymentProvider, PaymentStatus, PaymentType } from './entities/payment.entity';
 import { BookingStatus, PaymentMethod as BookingPaymentMethod } from '@/modules/bookings/entities/booking.entity';
 import { RevenuesRepository } from '@/modules/revenues/revenues.repository';
 import { RevenuePaymentType } from '@/modules/revenues/entities/revenue.entity';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { AllConfigType } from '@/config/config.type';
+import { CreateBookingDto } from '@/modules/bookings/dto/booking.dto';
+
+type VnpayCallbackDto = {
+    vnp_TxnRef: string
+    vnp_ResponseCode: string
+    vnp_TransactionNo?: string
+    vnp_Amount?: string
+    vnp_SecureHash: string
+    [key: string]: string | undefined
+}
+
+type MomoCallbackDto = {
+    orderId: string
+    resultCode: number
+    transId?: string
+    amount?: number
+    signature: string
+    [key: string]: string | number | undefined
+}
 
 @Injectable()
 export class PaymentsService {
     constructor(
         private readonly paymentsRepository: PaymentsRepository,
         private readonly bookingsRepository: BookingsRepository,
+        private readonly bookingsService: BookingsService,
         private readonly revenuesRepository: RevenuesRepository,
         private readonly configService: ConfigService<AllConfigType>,
+        @Inject(CACHE_MANAGER)
+        private readonly cacheManager: Cache,
     ) { }
+
+    private static readonly QR_SESSION_TTL_MS = 15 * 60 * 1000;
+    private static readonly QR_SESSION_PREFIX = 'payment:qr-session:';
+
+    private getQrSessionCacheKey(referenceCode: string): string {
+        return `${PaymentsService.QR_SESSION_PREFIX}${referenceCode.trim().toUpperCase()}`;
+    }
+
+    private generateQrSessionReference(): string {
+        const timestamp = Date.now().toString(36).toUpperCase();
+        const random = Math.random().toString(36).slice(2, 8).toUpperCase();
+        return `PAY${timestamp}${random}`;
+    }
+
+    private async getQrSession(referenceCode: string) {
+        return this.cacheManager.get<{
+            referenceCode: string
+            actor?: { userId?: string; email?: string }
+            payload: CreateBookingDto
+            totalAmount: number
+            expiresAt: string
+            status: 'pending' | 'paid' | 'failed' | 'expired'
+            bookingCode?: string
+            bookingId?: string
+            bookingStatus?: BookingStatus
+            paymentStatus?: PaymentStatus
+            errorCode?: string
+        }>(this.getQrSessionCacheKey(referenceCode));
+    }
+
+    async createQrPaymentSession(
+        actor: { userId?: string; email?: string } | undefined,
+        dto: CreateBookingDto,
+    ) {
+        const payload = await this.bookingsService.prepareCreatePayload(actor, {
+            ...dto,
+            paymentMethod: BookingPaymentMethod.ONLINE,
+        });
+        const quote = await this.bookingsRepository.quote(payload);
+        const referenceCode = this.generateQrSessionReference();
+        const expiresAt = quote.expiresAt ?? new Date(Date.now() + PaymentsService.QR_SESSION_TTL_MS);
+
+        await this.cacheManager.set(this.getQrSessionCacheKey(referenceCode), {
+            referenceCode,
+            actor: actor?.userId ? { userId: actor.userId, email: actor.email } : undefined,
+            payload,
+            totalAmount: quote.totalAmount,
+            expiresAt: expiresAt.toISOString(),
+            status: 'pending',
+        }, PaymentsService.QR_SESSION_TTL_MS);
+
+        return {
+            referenceCode,
+            totalAmount: quote.totalAmount,
+            expiresAt: expiresAt.toISOString(),
+            status: 'pending' as const,
+        };
+    }
+
+    async getQrPaymentSessionStatus(referenceCode: string) {
+        const session = await this.getQrSession(referenceCode);
+        if (!session) {
+            throw new NotFoundException('payment_session_not_found');
+        }
+
+        const isExpired = new Date(session.expiresAt).getTime() < Date.now();
+        const status = isExpired && session.status === 'pending' ? 'expired' : session.status;
+
+        return {
+            referenceCode: session.referenceCode,
+            totalAmount: session.totalAmount,
+            expiresAt: session.expiresAt,
+            status,
+            isExpired,
+            isPaid: status === 'paid',
+            bookingCode: session.bookingCode ?? null,
+            bookingId: session.bookingId ?? null,
+            bookingStatus: session.bookingStatus ?? null,
+            paymentStatus: session.paymentStatus ?? null,
+            errorCode: session.errorCode ?? null,
+            booking: session.bookingCode
+                ? {
+                    id: session.bookingId ?? '',
+                    bookingCode: session.bookingCode,
+                    totalAmount: session.totalAmount,
+                    status: session.bookingStatus ?? BookingStatus.PENDING_PAYMENT,
+                    paymentMethod: BookingPaymentMethod.ONLINE,
+                    expiresAt: session.expiresAt,
+                }
+                : null,
+        };
+    }
 
     private get paymentSecretKey(): string {
         return this.configService.get('payment.apiKey', { infer: true }) ?? '';
+    }
+
+    private get paymentAccountNumber(): string {
+        return this.configService.get('payment.acc', { infer: true }) ?? '';
+    }
+
+    private get paymentBankName(): string {
+        return this.configService.get('payment.bank', { infer: true }) ?? '';
+    }
+
+    private normalizeBankValue(value: string): string {
+        return value.trim().replace(/;$/, '').toUpperCase();
+    }
+
+    private extractBookingCode(input: ConfirmPaymentDto): string | null {
+        const directCode = input.code?.trim();
+        if (directCode) return directCode.toUpperCase().replace(/-/g, '');
+
+        const content = [input.content, input.description]
+            .filter((value) => Boolean(value))
+            .join(' ');
+        const match = content.match(/BK-?\d{8}-?[A-Z0-9]{5}/i);
+        return match ? match[0].toUpperCase().replace(/-/g, '') : null;
+    }
+
+    private extractQrSessionReference(input: ConfirmPaymentDto): string | null {
+        const directCode = input.code?.trim();
+        if (directCode && /^PAY[A-Z0-9]+$/i.test(directCode)) {
+            return directCode.toUpperCase();
+        }
+
+        const content = [input.content, input.description]
+            .filter((value) => Boolean(value))
+            .join(' ');
+        const match = content.match(/PAY[A-Z0-9]{8,}/i);
+        return match ? match[0].toUpperCase() : null;
     }
 
     private verifyHmacSignature(
@@ -119,7 +275,7 @@ export class PaymentsService {
                 vnp_Amount,
                 ...rest,
             });
-            await this.bookingsRepository.updateStatus(payment.bookingId, BookingStatus.COMPLETED);
+            await this.bookingsRepository.updateStatus(payment.bookingId, BookingStatus.CONFIRMED);
             await this.createRevenueIfNeeded(payment.bookingId, RevenuePaymentType.ONLINE);
         } else {
             await this.paymentsRepository.markFailed(payment.id, {
@@ -161,7 +317,7 @@ export class PaymentsService {
                 amount,
                 ...rest,
             });
-            await this.bookingsRepository.updateStatus(payment.bookingId, BookingStatus.COMPLETED);
+            await this.bookingsRepository.updateStatus(payment.bookingId, BookingStatus.CONFIRMED);
             await this.createRevenueIfNeeded(payment.bookingId, RevenuePaymentType.ONLINE);
         } else {
             await this.paymentsRepository.markFailed(payment.id, {
@@ -174,13 +330,144 @@ export class PaymentsService {
         return { success: isSuccess };
     }
 
-    async confirmOnBoardPayment(paymentId: string, companyId?: string, evidence?: string) {
+    async handleBankTransferWebhook(body: ConfirmPaymentDto, authorization?: string) {
+        if (!this.paymentSecretKey) {
+            throw new UnauthorizedException('payment_api_key_missing');
+        }
+
+        const token = authorization?.trim() ?? '';
+        const [scheme, value] = token.split(/\s+/);
+        if (!scheme || scheme.toLowerCase() !== 'apikey' || value !== this.paymentSecretKey) {
+            throw new UnauthorizedException('payment_api_key_invalid');
+        }
+
+        if (body.transferType !== 'in') {
+            throw new BadRequestException('payment_transfer_direction_invalid');
+        }
+
+        const expectedAccount = this.paymentAccountNumber.trim();
+        if (expectedAccount && expectedAccount !== String(body.accountNumber).trim()) {
+            throw new BadRequestException('payment_destination_account_mismatch');
+        }
+
+        const expectedBank = this.paymentBankName.trim();
+        if (expectedBank && this.normalizeBankValue(expectedBank) !== this.normalizeBankValue(body.gateway)) {
+            throw new BadRequestException('payment_gateway_mismatch');
+        }
+
+        const qrSessionReference = this.extractQrSessionReference(body);
+        if (qrSessionReference) {
+            const qrSession = await this.getQrSession(qrSessionReference);
+            if (qrSession) {
+                if (new Date(qrSession.expiresAt).getTime() < Date.now()) {
+                    await this.cacheManager.set(this.getQrSessionCacheKey(qrSessionReference), {
+                        ...qrSession,
+                        status: 'expired',
+                    }, PaymentsService.QR_SESSION_TTL_MS);
+                    throw new BadRequestException('payment_session_expired');
+                }
+
+                if (Number(body.transferAmount) !== Number(qrSession.totalAmount)) {
+                    throw new BadRequestException('payment_amount_mismatch');
+                }
+
+                if (qrSession.status === 'paid') {
+                    return { success: true };
+                }
+
+                try {
+                    const booking = await this.bookingsService.create(qrSession.actor, qrSession.payload);
+                    const payment = await this.bookingsRepository.findLatestPaymentByBookingId(booking.id);
+                    if (!payment) throw new NotFoundException('payment_not_found');
+
+                    await this.paymentsRepository.markPaid(payment.id, body.referenceCode ?? String(body.id), {
+                        ...body,
+                        referenceCode: qrSessionReference,
+                    });
+                    await this.bookingsRepository.updateStatus(payment.bookingId, BookingStatus.CONFIRMED);
+                    await this.createRevenueIfNeeded(payment.bookingId, RevenuePaymentType.ONLINE);
+
+                    await this.cacheManager.set(this.getQrSessionCacheKey(qrSessionReference), {
+                        ...qrSession,
+                        status: 'paid',
+                        bookingCode: booking.bookingCode,
+                        bookingId: booking.id,
+                        bookingStatus: BookingStatus.CONFIRMED,
+                        paymentStatus: PaymentStatus.PAID,
+                    }, PaymentsService.QR_SESSION_TTL_MS);
+
+                    return { success: true };
+                } catch (error: any) {
+                    await this.cacheManager.set(this.getQrSessionCacheKey(qrSessionReference), {
+                        ...qrSession,
+                        status: 'failed',
+                        errorCode: String(error?.response?.message || error?.message || 'payment_session_finalize_failed'),
+                    }, PaymentsService.QR_SESSION_TTL_MS);
+                    throw error;
+                }
+            }
+        }
+
+        const bookingCode = this.extractBookingCode(body);
+        if (!bookingCode) {
+            throw new BadRequestException('payment_booking_code_missing');
+        }
+
+        const booking = await this.bookingsRepository.findEntityByCode(bookingCode);
+        if (!booking) throw new NotFoundException('booking_not_found');
+
+        const payment = await this.paymentsRepository.findLatestByBookingId(booking.bookingId);
+        if (!payment) throw new NotFoundException('payment_not_found');
+
+        if (payment.status === PaymentStatus.PAID || payment.status === PaymentStatus.CONFIRMED_ON_BOARD) {
+            return { success: true };
+        }
+
+        if (payment.paymentType !== PaymentType.ONLINE) {
+            throw new BadRequestException('payment_type_invalid');
+        }
+
+        if (booking.status !== BookingStatus.PENDING_PAYMENT) {
+            throw new BadRequestException('booking_status_not_payable');
+        }
+
+        if (Number(body.transferAmount) !== Number(payment.amount)) {
+            throw new BadRequestException('payment_amount_mismatch');
+        }
+
+        await this.paymentsRepository.markPaid(payment.id, body.referenceCode ?? String(body.id), {
+            ...body,
+            bookingCode,
+        });
+        await this.bookingsRepository.updateStatus(payment.bookingId, BookingStatus.CONFIRMED);
+        await this.createRevenueIfNeeded(payment.bookingId, RevenuePaymentType.ONLINE);
+
+        return { success: true };
+    }
+
+    async confirmOnBoardPayment(
+        paymentId: string,
+        input: {
+            companyId?: string;
+            staffAdminId?: string;
+            evidence?: string;
+            note?: string;
+            collectedAmount: number;
+        },
+    ) {
+        if (!input.staffAdminId) {
+            throw new ForbiddenException('company_staff_required');
+        }
+        if (!input.companyId) {
+            throw new ForbiddenException('company_context_required');
+        }
+
         const payment = await this.paymentsRepository.findById(paymentId);
         if (!payment) throw new NotFoundException('payment_not_found');
 
         const booking = await this.bookingsRepository.findEntityById(payment.bookingId);
         if (!booking) throw new NotFoundException('booking_not_found');
-        if (companyId && booking.trip?.busCompanyId !== companyId) {
+        if (booking.trip?.busCompanyId !== input.companyId) {
             throw new ForbiddenException('forbidden_company_resource');
         }
 
@@ -190,9 +477,21 @@ export class PaymentsService {
         if (payment.status !== PaymentStatus.PENDING) {
             throw new BadRequestException('payment_status_not_confirmable');
         }
+        if (booking.status !== BookingStatus.RESERVED) {
+            throw new BadRequestException('booking_status_not_confirmable');
+        }
+        if (Number(input.collectedAmount) !== Number(payment.amount)) {
+            throw new BadRequestException('payment_collected_amount_mismatch');
+        }
 
-        await this.paymentsRepository.markConfirmedOnBoard(paymentId, evidence);
-        await this.bookingsRepository.updateStatus(payment.bookingId, BookingStatus.COMPLETED);
+        await this.paymentsRepository.markConfirmedOnBoard(paymentId, {
+            companyId: input.companyId,
+            staffAdminId: input.staffAdminId,
+            evidence: input.evidence,
+            note: input.note,
+            collectedAmount: input.collectedAmount,
+        });
+        await this.bookingsRepository.updateStatus(payment.bookingId, BookingStatus.CONFIRMED);
         await this.createRevenueIfNeeded(payment.bookingId, RevenuePaymentType.PAY_ON_BOARD);
 
         return this.paymentsRepository.findById(paymentId);

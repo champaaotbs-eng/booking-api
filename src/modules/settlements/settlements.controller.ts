@@ -3,9 +3,7 @@ import { SettlementsService } from './settlements.service';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterSettlementDto, SortSettlementDto } from './dto/query-settlement.dto';
 import { CreateSettlementDto, MarkPaidSettlementDto } from './dto/settlement.dto';
-import { JwtAuthGuard } from 'modules/auth/guard/jwt-auth.guard';
 
-@UseGuards(JwtAuthGuard)
 @Controller()
 export class SettlementsController {
     constructor(private readonly settlementsService: SettlementsService) { }

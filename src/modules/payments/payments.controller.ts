@@ -1,12 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Patch, Post } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { Public, UserInfo } from '@/decorator/customize.decorator';
 import {
     ConfirmOnBoardPaymentDto,
     InitiatePaymentDto,
-    MomoCallbackDto,
-    VnpayCallbackDto,
 } from './dto/payment.dto';
+import { ConfirmPaymentDto } from './dto/confirm.dto';
+import { CreateBookingDto } from '@/modules/bookings/dto/booking.dto';
 
 @Controller()
 export class PaymentsController {
@@ -28,24 +28,42 @@ export class PaymentsController {
         return this.paymentsService.initiateOnlinePayment(dto, user);
     }
 
-    @Post('payments/callback/vnpay')
     @Public()
-    vnpayCallback(@Body() body: VnpayCallbackDto) {
-        return this.paymentsService.handleVnpayCallback(body);
+    @Post('payments/qr-session')
+    createQrSession(
+        @Body() dto: CreateBookingDto,
+        @UserInfo() user: { userId?: string; email?: string } | undefined,
+    ) {
+        return this.paymentsService.createQrPaymentSession(user, dto);
     }
 
-    @Post('payments/callback/momo')
     @Public()
-    momoCallback(@Body() body: MomoCallbackDto) {
-        return this.paymentsService.handleMomoCallback(body);
+    @Get('payments/qr-session/:referenceCode/status')
+    getQrSessionStatus(@Param('referenceCode') referenceCode: string) {
+        return this.paymentsService.getQrPaymentSessionStatus(referenceCode);
+    }
+
+    @Post('payments/webhooks/bank-transfer')
+    @Public()
+    bankTransferWebhook(
+        @Body() body: ConfirmPaymentDto,
+        @Headers('authorization') authorization?: string,
+    ) {
+        return this.paymentsService.handleBankTransferWebhook(body, authorization);
     }
 
     @Patch('company/payments/:id/confirm-on-board')
     confirmOnBoard(
         @Param('id') paymentId: string,
-        @Query('companyId') companyId: string,
+        @UserInfo() user: { adminId?: string; busCompanyId?: string },
         @Body() dto: ConfirmOnBoardPaymentDto,
     ) {
-        return this.paymentsService.confirmOnBoardPayment(paymentId, companyId, dto.evidence);
+        return this.paymentsService.confirmOnBoardPayment(paymentId, {
+            companyId: user?.busCompanyId,
+            staffAdminId: user?.adminId,
+            evidence: dto.evidence,
+            note: dto.note,
+            collectedAmount: dto.collectedAmount,
+        });
     }
 }
