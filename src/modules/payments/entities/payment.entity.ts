@@ -74,6 +74,9 @@ export class PaymentEntity {
     @Column({ name: 'collected_amount', type: 'decimal', precision: 10, scale: 2, nullable: true })
     collectedAmount?: number;
 
+    @Column({ name: 'repay_amount', type: 'decimal', precision: 10, scale: 2, nullable: true })
+    repayAmount?: number;
+
     @Column({ name: 'amount', type: 'decimal', precision: 10, scale: 2, nullable: true })
     amount: number;
 

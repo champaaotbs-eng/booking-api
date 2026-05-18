@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 import { I18nTranslations } from '@/generated/i18n.generated';
 import { PaymentMethod, PaymentProvider } from '../entities/payment.entity';
@@ -36,4 +36,13 @@ export class ConfirmOnBoardPaymentDto {
     @IsNumber()
     @Min(0)
     collectedAmount: number;
+
+    @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
+    @IsNumber()
+    @Min(0)
+    repayAmount: number;
+
+    @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
+    @IsDateString()
+    confirmedAt: string;
 }

@@ -47,6 +47,7 @@ import { RolesModule } from 'modules/roles/roles.module';
 import { AdminsModule } from './modules/admins/admins.module';
 import { FilesModule } from 'modules/files/files.module';
 import { StationsModule } from 'modules/stations/stations.module';
+import { DashboardModule } from 'modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -118,7 +119,8 @@ import { StationsModule } from 'modules/stations/stations.module';
     SettlementsModule,
     RolesModule,
     AdminsModule,
-    FilesModule
+    FilesModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [

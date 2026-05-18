@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { Public, UserInfo } from '@/decorator/customize.decorator';
 import {
@@ -54,7 +54,7 @@ export class PaymentsController {
 
     @Patch('company/payments/:id/confirm-on-board')
     confirmOnBoard(
-        @Param('id') paymentId: string,
+        @Param('id', new ParseUUIDPipe()) paymentId: string,
         @UserInfo() user: { adminId?: string; busCompanyId?: string },
         @Body() dto: ConfirmOnBoardPaymentDto,
     ) {
@@ -64,6 +64,8 @@ export class PaymentsController {
             evidence: dto.evidence,
             note: dto.note,
             collectedAmount: dto.collectedAmount,
+            repayAmount: dto.repayAmount,
+            confirmedAt: dto.confirmedAt,
         });
     }
 }

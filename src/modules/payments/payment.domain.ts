@@ -13,6 +13,7 @@ export class Payment {
     @Allow() confirmedAt?: Date;
     @Allow() confirmationNote?: string;
     @Allow() collectedAmount?: number;
+    @Allow() repayAmount?: number;
     @Allow() amount: number;
     @Allow() status: PaymentStatus;
     @Allow() transactionCode?: string;

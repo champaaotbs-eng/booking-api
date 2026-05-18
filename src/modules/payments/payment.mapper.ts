@@ -17,6 +17,9 @@ export class PaymentMapper {
         domain.collectedAmount = raw.collectedAmount === undefined || raw.collectedAmount === null
             ? undefined
             : Number(raw.collectedAmount);
+        domain.repayAmount = raw.repayAmount === undefined || raw.repayAmount === null
+            ? undefined
+            : Number(raw.repayAmount);
         domain.amount = Number(raw.amount);
         domain.status = raw.status;
         domain.transactionCode = raw.transactionCode;

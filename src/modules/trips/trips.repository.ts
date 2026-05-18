@@ -225,8 +225,10 @@ export class TripsRepository {
         const date = new Date(params.date);
         const nextDay = new Date(date);
         nextDay.setDate(nextDay.getDate() + 1);
+        const now = new Date();
+        const departureFrom = now >= date && now < nextDay ? now : date;
         qb.andWhere('trip.departureTime >= :from AND trip.departureTime < :to', {
-            from: date,
+            from: departureFrom,
             to: nextDay,
         });
 

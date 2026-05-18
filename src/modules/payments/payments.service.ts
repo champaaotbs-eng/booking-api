@@ -453,6 +453,8 @@ export class PaymentsService {
             evidence?: string;
             note?: string;
             collectedAmount: number;
+            repayAmount: number;
+            confirmedAt: string;
         },
     ) {
         if (!input.staffAdminId) {
@@ -480,8 +482,21 @@ export class PaymentsService {
         if (booking.status !== BookingStatus.RESERVED) {
             throw new BadRequestException('booking_status_not_confirmable');
         }
-        if (Number(input.collectedAmount) !== Number(payment.amount)) {
+        const paymentAmount = Number(payment.amount);
+        const collectedAmount = Number(input.collectedAmount);
+        const repayAmount = Number(input.repayAmount);
+        const expectedRepayAmount = Number((collectedAmount - paymentAmount).toFixed(2));
+
+        if (collectedAmount < paymentAmount) {
             throw new BadRequestException('payment_collected_amount_mismatch');
+        }
+        if (repayAmount !== expectedRepayAmount) {
+            throw new BadRequestException('payment_repay_amount_mismatch');
+        }
+
+        const confirmedAt = new Date(input.confirmedAt);
+        if (Number.isNaN(confirmedAt.getTime())) {
+            throw new BadRequestException('payment_confirmed_at_invalid');
         }
 
         await this.paymentsRepository.markConfirmedOnBoard(paymentId, {
@@ -489,7 +504,9 @@ export class PaymentsService {
             staffAdminId: input.staffAdminId,
             evidence: input.evidence,
             note: input.note,
-            collectedAmount: input.collectedAmount,
+            collectedAmount,
+            repayAmount,
+            confirmedAt,
         });
         await this.bookingsRepository.updateStatus(payment.bookingId, BookingStatus.CONFIRMED);
         await this.createRevenueIfNeeded(payment.bookingId, RevenuePaymentType.PAY_ON_BOARD);

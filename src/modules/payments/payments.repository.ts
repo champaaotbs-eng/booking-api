@@ -60,20 +60,22 @@ export class PaymentsRepository {
             companyId: string;
             staffAdminId: string;
             collectedAmount: number;
+            repayAmount: number;
+            confirmedAt: Date;
             evidence?: string;
             note?: string;
         },
     ): Promise<void> {
-        const now = new Date();
         await this.repo.update({ paymentId: id }, {
             status: PaymentStatus.CONFIRMED_ON_BOARD,
             evidence: input.evidence,
             confirmedByAdminId: input.staffAdminId,
             confirmedCompanyId: input.companyId,
-            confirmedAt: now,
+            confirmedAt: input.confirmedAt,
             confirmationNote: input.note,
             collectedAmount: input.collectedAmount,
-            completedAt: now,
+            repayAmount: input.repayAmount,
+            completedAt: input.confirmedAt,
         });
     }
 }
