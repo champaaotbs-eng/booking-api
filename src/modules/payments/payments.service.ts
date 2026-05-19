@@ -62,8 +62,6 @@ export class PaymentsService {
     private async getQrSession(referenceCode: string) {
         return this.cacheManager.get<{
             referenceCode: string
-            actor?: { userId?: string; email?: string }
-            payload?: CreateBookingDto
             totalAmount: number
             expiresAt: string
             status: 'pending' | 'paid' | 'failed' | 'expired'
@@ -191,27 +189,11 @@ export class PaymentsService {
     }
 
     private extractBookingCode(input: ConfirmPaymentDto): string | null {
-        const directCode = input.code?.trim();
-        if (directCode) return directCode.toUpperCase().replace(/-/g, '');
+        const content = input.content?.trim();
+        if (!content) return null;
 
-        const content = [input.content, input.description]
-            .filter((value) => Boolean(value))
-            .join(' ');
         const match = content.match(/BK?\d{8}?[A-Z0-9]{5}/i);
         return match ? match[0].toUpperCase().replace(/-/g, '') : null;
-    }
-
-    private extractQrSessionReference(input: ConfirmPaymentDto): string | null {
-        const directCode = input.code?.trim();
-        if (directCode && /^PAY[A-Z0-9]+$/i.test(directCode)) {
-            return directCode.toUpperCase();
-        }
-
-        const content = [input.content, input.description]
-            .filter((value) => Boolean(value))
-            .join(' ');
-        const match = content.match(/PAY[A-Z0-9]{8,}/i);
-        return match ? match[0].toUpperCase() : null;
     }
 
     private verifyHmacSignature(
@@ -385,62 +367,6 @@ export class PaymentsService {
             throw new BadRequestException('payment_gateway_mismatch');
         }
 
-        const qrSessionReference = this.extractQrSessionReference(body);
-        if (qrSessionReference) {
-            const qrSession = await this.getQrSession(qrSessionReference);
-            if (qrSession) {
-                if (new Date(qrSession.expiresAt).getTime() < Date.now()) {
-                    await this.cacheManager.set(this.getQrSessionCacheKey(qrSessionReference), {
-                        ...qrSession,
-                        status: 'expired',
-                    }, PaymentsService.QR_SESSION_TTL_MS);
-                    throw new BadRequestException('payment_session_expired');
-                }
-
-                if (Number(body.transferAmount) !== Number(qrSession.totalAmount)) {
-                    throw new BadRequestException('payment_amount_mismatch');
-                }
-
-                if (qrSession.status === 'paid') {
-                    return { success: true };
-                }
-
-                try {
-                    if (!qrSession.payload) {
-                        throw new BadRequestException('payment_session_payload_missing');
-                    }
-                    const booking = await this.bookingsService.create(qrSession.actor, qrSession.payload);
-                    const payment = await this.bookingsRepository.findLatestPaymentByBookingId(booking.id);
-                    if (!payment) throw new NotFoundException('payment_not_found');
-
-                    await this.paymentsRepository.markPaid(payment.id, body.referenceCode ?? String(body.id), {
-                        ...body,
-                        referenceCode: qrSessionReference,
-                    });
-                    await this.bookingsRepository.updateStatus(payment.bookingId, BookingStatus.CONFIRMED);
-                    await this.createRevenueIfNeeded(payment.bookingId, RevenuePaymentType.ONLINE);
-
-                    await this.cacheManager.set(this.getQrSessionCacheKey(qrSessionReference), {
-                        ...qrSession,
-                        status: 'paid',
-                        bookingCode: booking.bookingCode,
-                        bookingId: booking.id,
-                        bookingStatus: BookingStatus.CONFIRMED,
-                        paymentStatus: PaymentStatus.PAID,
-                    }, PaymentsService.QR_SESSION_TTL_MS);
-
-                    return { success: true };
-                } catch (error: any) {
-                    await this.cacheManager.set(this.getQrSessionCacheKey(qrSessionReference), {
-                        ...qrSession,
-                        status: 'failed',
-                        errorCode: String(error?.response?.message || error?.message || 'payment_session_finalize_failed'),
-                    }, PaymentsService.QR_SESSION_TTL_MS);
-                    throw error;
-                }
-            }
-        }
-
         const bookingCode = this.extractBookingCode(body);
         if (!bookingCode) {
             throw new BadRequestException('payment_booking_code_missing');
@@ -474,6 +400,18 @@ export class PaymentsService {
         });
         await this.bookingsRepository.updateStatus(payment.bookingId, BookingStatus.CONFIRMED);
         await this.createRevenueIfNeeded(payment.bookingId, RevenuePaymentType.ONLINE);
+
+        const qrSession = await this.getQrSession(bookingCode);
+        if (qrSession) {
+            await this.cacheManager.set(this.getQrSessionCacheKey(bookingCode), {
+                ...qrSession,
+                status: 'paid',
+                bookingCode: booking.bookingCode,
+                bookingId: booking.bookingId,
+                bookingStatus: BookingStatus.CONFIRMED,
+                paymentStatus: PaymentStatus.PAID,
+            }, PaymentsService.QR_SESSION_TTL_MS);
+        }
 
         return { success: true };
     }
