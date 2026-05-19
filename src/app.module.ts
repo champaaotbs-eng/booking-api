@@ -22,7 +22,7 @@ import * as path from 'path';
 import { JwtAuthGuard } from './modules/auth/guard/jwt-auth.guard';
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from '@/logger/logger.config';
-import { HttpLoggerInterceptor } from './core/logger.interceptor';
+import { LoggerInterceptor } from './core/logger.interceptor';
 import { ClsModule } from 'nestjs-cls';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HttpModule } from '@nestjs/axios';
@@ -135,7 +135,7 @@ import { DashboardModule } from 'modules/dashboard/dashboard.module';
     },
     {
       provide: APP_INTERCEPTOR,
-      useClass: HttpLoggerInterceptor,
+      useClass: LoggerInterceptor,
     },
   ],
 })

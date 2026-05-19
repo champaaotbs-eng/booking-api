@@ -1,4 +1,4 @@
-import { BadRequestException, HttpStatus, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, HttpStatus, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { I18nService } from 'nestjs-i18n';
@@ -27,12 +27,18 @@ export class AuthService {
 
   async validateAdmin(username: string, pass: string): Promise<any> {
     const admin = await this.adminsService.findAdminByUsername(username);
+    if (!admin?.isActive) {
+      throw new ForbiddenException('admin_inactive');
+    }
     const isValid = await this.adminsService.isValidPassword(pass, admin?.password || '')
     if (isValid) return admin;
     return null;
   }
 
   async adminLogin(admin: Admin, response: Response) {
+    if (!admin.isActive) {
+      throw new ForbiddenException('admin_inactive');
+    }
 
     const payload = {
       sub: 'admin-token',

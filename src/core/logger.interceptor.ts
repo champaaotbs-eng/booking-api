@@ -5,8 +5,8 @@ import { ClsService, ClsServiceManager } from 'nestjs-cls';
 import { catchError, finalize, Observable, tap, throwError } from 'rxjs';
 
 @Injectable()
-export class HttpLoggerInterceptor implements NestInterceptor {
-    private logger = new Logger(HttpLoggerInterceptor.name)
+export class LoggerInterceptor implements NestInterceptor {
+    private logger = new Logger(LoggerInterceptor.name)
     constructor(
         private clsService: ClsService,
     ) { }

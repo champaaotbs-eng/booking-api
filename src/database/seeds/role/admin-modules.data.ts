@@ -1,12 +1,11 @@
 export const ADMIN_MODULES = {
     DASHBOARD: 'dashboard',
-    USER: 'user',
+    ADMIN: 'admin',
     ROLE: 'role',
     COMPANY: 'company',
-    ROUTE: 'route',
-    station: 'station',
+    STATION: 'station',
+    TRIP: 'trip',
     BOOKING: 'booking',
-    REPORT: 'report',
     REVENUE: 'revenue',
 } as const;
 

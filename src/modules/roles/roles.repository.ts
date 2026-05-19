@@ -46,6 +46,7 @@ export class RolesRepository {
             where.busCompanyId = IsNull();
         } else if (filterOptions?.companyId) {
             where.busCompanyId = filterOptions.companyId;
+            where.type = ADMIN_TYPE.COMPANY_ADMIN;
         }
 
         const [entities, total] = await this.repo.findAndCount({

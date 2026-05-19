@@ -86,7 +86,9 @@ export class AdminsRepository {
                 { companyId },
             )
             .leftJoinAndSelect('admin.role', 'role')
-            .where('admin.deletedAt IS NULL');
+            .where('admin.deletedAt IS NULL')
+            .andWhere('role.type = :roleType', { roleType: ADMIN_TYPE.COMPANY_ADMIN })
+            .andWhere('role.company_id = :companyId', { companyId });
 
         if (filterOptions?.username && filterOptions?.fullName && filterOptions.username === filterOptions.fullName) {
             qb.andWhere('(admin.username ILIKE :search OR admin.fullName ILIKE :search)', {
@@ -160,6 +162,8 @@ export class AdminsRepository {
             .leftJoinAndSelect('admin.role', 'role')
             .where('admin.adminId = :adminId', { adminId })
             .andWhere('admin.deletedAt IS NULL')
+            .andWhere('role.type = :roleType', { roleType: ADMIN_TYPE.COMPANY_ADMIN })
+            .andWhere('role.company_id = :companyId', { companyId })
             .getOne();
 
         return entity ? AdminMapper.toDomain(entity) : null;
@@ -238,11 +242,10 @@ export class AdminsRepository {
     }
 
     async remove(id: string): Promise<void> {
-        await this.adminsRepository.delete(id);
+        await this.adminsRepository.update({ adminId: id }, { isActive: false });
     }
 
     async removeCompanyStaff(companyId: string, adminId: string): Promise<void> {
-        await this.busCompanyAdminRepository.delete({ companyId, adminId });
-        await this.adminsRepository.delete(adminId);
+        await this.adminsRepository.update({ adminId }, { isActive: false });
     }
 }

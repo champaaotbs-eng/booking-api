@@ -2,6 +2,7 @@ import { I18nTranslations } from "@/generated/i18n.generated";
 import { IsNotEmpty, IsString, IsOptional, IsBoolean, IsArray, ValidateNested, IsUUID } from "class-validator";
 import { i18nValidationMessage } from "nestjs-i18n";
 import { ADMIN_TYPE } from "utils/constants";
+import { Transform } from "class-transformer";
 
 export class CreateRoleDto {
     @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
@@ -21,6 +22,7 @@ export class CreateRoleDto {
     type: ADMIN_TYPE;
 
     @IsOptional()
+    @Transform(({ value }) => value === '' ? undefined : value)
     @IsUUID()
     busCompanyId?: string;
 
