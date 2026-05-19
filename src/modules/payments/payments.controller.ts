@@ -6,7 +6,6 @@ import {
     InitiatePaymentDto,
 } from './dto/payment.dto';
 import { ConfirmPaymentDto } from './dto/confirm.dto';
-import { CreateBookingDto } from '@/modules/bookings/dto/booking.dto';
 
 @Controller()
 export class PaymentsController {
@@ -26,21 +25,6 @@ export class PaymentsController {
         @UserInfo() user: { userId?: string; adminId?: string },
     ) {
         return this.paymentsService.initiateOnlinePayment(dto, user);
-    }
-
-    @Public()
-    @Post('payments/qr-session')
-    createQrSession(
-        @Body() dto: CreateBookingDto,
-        @UserInfo() user: { userId?: string; email?: string } | undefined,
-    ) {
-        return this.paymentsService.createQrPaymentSession(user, dto);
-    }
-
-    @Public()
-    @Get('payments/qr-session/:referenceCode/status')
-    getQrSessionStatus(@Param('referenceCode') referenceCode: string) {
-        return this.paymentsService.getQrPaymentSessionStatus(referenceCode);
     }
 
     @Post('payments/webhooks/bank-transfer')

@@ -432,4 +432,23 @@ export class BookingsRepository {
             .execute();
         return result.affected ?? 0;
     }
+
+    async expirePendingPaymentsForExpiredBookings(): Promise<number> {
+        const result = await this.paymentRepo
+            .createQueryBuilder()
+            .update(PaymentEntity)
+            .set({
+                status: PaymentStatus.EXPIRED,
+                completedAt: new Date(),
+            })
+            .where('status = :paymentStatus', { paymentStatus: PaymentStatus.PENDING })
+            .andWhere(`booking_id IN (
+                SELECT booking_id
+                FROM bookings
+                WHERE status = :bookingStatus
+            )`, { bookingStatus: BookingStatus.EXPIRED })
+            .execute();
+
+        return result.affected ?? 0;
+    }
 }

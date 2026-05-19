@@ -175,6 +175,16 @@ export class BookingsService {
         };
     }
 
+    async expirePendingPaymentBookings() {
+        const expiredBookings = await this.bookingsRepository.expireOldBookings();
+        const expiredPayments = await this.bookingsRepository.expirePendingPaymentsForExpiredBookings();
+
+        return {
+            expiredBookings,
+            expiredPayments,
+        };
+    }
+
     async issueTicketEmail(bookingId: string) {
         const booking = await this.bookingsRepository.findById(bookingId);
         if (!booking) throw new NotFoundException('booking_not_found');

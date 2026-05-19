@@ -1,17 +1,13 @@
 import {
     BadRequestException,
     ForbiddenException,
-    Inject,
     Injectable,
     NotFoundException,
     UnauthorizedException,
 } from '@nestjs/common';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { PaymentsRepository } from './payments.repository';
 import { BookingsRepository } from '@/modules/bookings/bookings.repository';
-import { BookingsService } from '@/modules/bookings/bookings.service';
 import { InitiatePaymentDto } from './dto/payment.dto';
 import { ConfirmPaymentDto } from './dto/confirm.dto';
 import { PaymentProvider, PaymentStatus, PaymentType } from './entities/payment.entity';
@@ -20,7 +16,6 @@ import { RevenuesRepository } from '@/modules/revenues/revenues.repository';
 import { RevenuePaymentType } from '@/modules/revenues/entities/revenue.entity';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { AllConfigType } from '@/config/config.type';
-import { CreateBookingDto } from '@/modules/bookings/dto/booking.dto';
 
 type VnpayCallbackDto = {
     vnp_TxnRef: string
@@ -45,132 +40,9 @@ export class PaymentsService {
     constructor(
         private readonly paymentsRepository: PaymentsRepository,
         private readonly bookingsRepository: BookingsRepository,
-        private readonly bookingsService: BookingsService,
         private readonly revenuesRepository: RevenuesRepository,
         private readonly configService: ConfigService<AllConfigType>,
-        @Inject(CACHE_MANAGER)
-        private readonly cacheManager: Cache,
     ) { }
-
-    private static readonly QR_SESSION_TTL_MS = 15 * 60 * 1000;
-    private static readonly QR_SESSION_PREFIX = 'payment:qr-session:';
-
-    private getQrSessionCacheKey(referenceCode: string): string {
-        return `${PaymentsService.QR_SESSION_PREFIX}${referenceCode.trim().toUpperCase()}`;
-    }
-
-    private async getQrSession(referenceCode: string) {
-        return this.cacheManager.get<{
-            referenceCode: string
-            totalAmount: number
-            expiresAt: string
-            status: 'pending' | 'paid' | 'failed' | 'expired'
-            bookingCode?: string
-            bookingId?: string
-            bookingStatus?: BookingStatus
-            paymentStatus?: PaymentStatus
-            errorCode?: string
-        }>(this.getQrSessionCacheKey(referenceCode));
-    }
-
-    async createQrPaymentSession(
-        actor: { userId?: string; email?: string } | undefined,
-        dto: CreateBookingDto,
-    ) {
-        const booking = await this.bookingsService.create(actor, {
-            ...dto,
-            paymentMethod: BookingPaymentMethod.ONLINE,
-        });
-        const payment = await this.bookingsRepository.findLatestPaymentByBookingId(booking.id);
-        if (!payment) {
-            throw new NotFoundException('payment_not_found');
-        }
-
-        const referenceCode = booking.bookingCode;
-        const expiresAt = booking.expiresAt
-            ? new Date(booking.expiresAt)
-            : new Date(Date.now() + PaymentsService.QR_SESSION_TTL_MS);
-        const status =
-            payment.status === PaymentStatus.PAID || booking.status === BookingStatus.CONFIRMED
-                ? 'paid'
-                : 'pending';
-
-        await this.cacheManager.set(this.getQrSessionCacheKey(referenceCode), {
-            referenceCode,
-            totalAmount: booking.totalAmount,
-            expiresAt: expiresAt.toISOString(),
-            status,
-            bookingCode: booking.bookingCode,
-            bookingId: booking.id,
-            bookingStatus: booking.status as BookingStatus,
-            paymentStatus: payment.status,
-        }, PaymentsService.QR_SESSION_TTL_MS);
-
-        return {
-            referenceCode,
-            totalAmount: booking.totalAmount,
-            expiresAt: expiresAt.toISOString(),
-            status,
-            bookingCode: booking.bookingCode,
-            bookingId: booking.id,
-        };
-    }
-
-    async getQrPaymentSessionStatus(referenceCode: string) {
-        let session = await this.getQrSession(referenceCode);
-        if (!session) {
-            const booking = await this.bookingsRepository.findEntityByCode(referenceCode);
-            if (!booking) {
-                throw new NotFoundException('payment_session_not_found');
-            }
-
-            const payment = await this.bookingsRepository.findLatestPaymentByBookingId(booking.bookingId);
-            if (!payment) {
-                throw new NotFoundException('payment_not_found');
-            }
-
-            session = {
-                referenceCode: booking.bookingCode,
-                totalAmount: Number(booking.totalAmount),
-                expiresAt: booking.expiresAt?.toISOString() ?? new Date(Date.now() + PaymentsService.QR_SESSION_TTL_MS).toISOString(),
-                status:
-                    payment.status === PaymentStatus.PAID || booking.status === BookingStatus.CONFIRMED
-                        ? 'paid'
-                        : 'pending',
-                bookingCode: booking.bookingCode,
-                bookingId: booking.bookingId,
-                bookingStatus: booking.status,
-                paymentStatus: payment.status,
-            };
-        }
-
-        const isExpired = new Date(session.expiresAt).getTime() < Date.now();
-        const status = isExpired && session.status === 'pending' ? 'expired' : session.status;
-
-        return {
-            referenceCode: session.referenceCode,
-            totalAmount: session.totalAmount,
-            expiresAt: session.expiresAt,
-            status,
-            isExpired,
-            isPaid: status === 'paid',
-            bookingCode: session.bookingCode ?? null,
-            bookingId: session.bookingId ?? null,
-            bookingStatus: session.bookingStatus ?? null,
-            paymentStatus: session.paymentStatus ?? null,
-            errorCode: session.errorCode ?? null,
-            booking: session.bookingCode
-                ? {
-                    id: session.bookingId ?? '',
-                    bookingCode: session.bookingCode,
-                    totalAmount: session.totalAmount,
-                    status: session.bookingStatus ?? BookingStatus.PENDING_PAYMENT,
-                    paymentMethod: BookingPaymentMethod.ONLINE,
-                    expiresAt: session.expiresAt,
-                }
-                : null,
-        };
-    }
 
     private get paymentSecretKey(): string {
         return this.configService.get('payment.apiKey', { infer: true }) ?? '';
@@ -400,18 +272,6 @@ export class PaymentsService {
         });
         await this.bookingsRepository.updateStatus(payment.bookingId, BookingStatus.CONFIRMED);
         await this.createRevenueIfNeeded(payment.bookingId, RevenuePaymentType.ONLINE);
-
-        const qrSession = await this.getQrSession(bookingCode);
-        if (qrSession) {
-            await this.cacheManager.set(this.getQrSessionCacheKey(bookingCode), {
-                ...qrSession,
-                status: 'paid',
-                bookingCode: booking.bookingCode,
-                bookingId: booking.bookingId,
-                bookingStatus: BookingStatus.CONFIRMED,
-                paymentStatus: PaymentStatus.PAID,
-            }, PaymentsService.QR_SESSION_TTL_MS);
-        }
 
         return { success: true };
     }

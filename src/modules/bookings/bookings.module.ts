@@ -10,6 +10,7 @@ import { BookingsRepository } from './bookings.repository';
 import { PaymentEntity } from '@/modules/payments/entities/payment.entity';
 import { MailModule } from '@/modules/mail/mail.module';
 import { UsersModule } from '@/modules/users/users.module';
+import { BookingExpiryScheduler } from './booking-expiry.scheduler';
 
 @Module({
     imports: [
@@ -24,7 +25,7 @@ import { UsersModule } from '@/modules/users/users.module';
         UsersModule,
     ],
     controllers: [BookingsController],
-    providers: [BookingsService, BookingsRepository],
+    providers: [BookingsService, BookingsRepository, BookingExpiryScheduler],
     exports: [BookingsService, BookingsRepository],
 })
 export class BookingsModule { }
