@@ -1,4 +1,5 @@
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { BusCompanyEntity } from 'modules/bus-companies/entities/bus-company.entity';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { ADMIN_TYPE } from "utils/constants";
 
 @Entity('roles')
@@ -14,6 +15,13 @@ export class RoleEntity {
 
     @Column({ nullable: true })
     type?: ADMIN_TYPE;
+
+    @ManyToOne(() => BusCompanyEntity, { nullable: true, onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'company_id', referencedColumnName: 'busCompanyId' })
+    busCompany?: BusCompanyEntity | null;
+
+    @Column({ name: 'company_id', nullable: true })
+    busCompanyId?: string | null;
 
     @Column({ type: 'jsonb' })
     permissions: {

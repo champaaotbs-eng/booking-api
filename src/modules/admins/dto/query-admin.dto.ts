@@ -4,6 +4,7 @@ export class FilterAdminDto {
     username?: string;
     fullName?: string;
     isActive?: boolean;
+    roleId?: string;
 }
 
 export class SortAdminDto {

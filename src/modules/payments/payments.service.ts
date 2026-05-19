@@ -59,17 +59,11 @@ export class PaymentsService {
         return `${PaymentsService.QR_SESSION_PREFIX}${referenceCode.trim().toUpperCase()}`;
     }
 
-    private generateQrSessionReference(): string {
-        const timestamp = Date.now().toString(36).toUpperCase();
-        const random = Math.random().toString(36).slice(2, 8).toUpperCase();
-        return `PAY${timestamp}${random}`;
-    }
-
     private async getQrSession(referenceCode: string) {
         return this.cacheManager.get<{
             referenceCode: string
             actor?: { userId?: string; email?: string }
-            payload: CreateBookingDto
+            payload?: CreateBookingDto
             totalAmount: number
             expiresAt: string
             status: 'pending' | 'paid' | 'failed' | 'expired'
@@ -85,35 +79,71 @@ export class PaymentsService {
         actor: { userId?: string; email?: string } | undefined,
         dto: CreateBookingDto,
     ) {
-        const payload = await this.bookingsService.prepareCreatePayload(actor, {
+        const booking = await this.bookingsService.create(actor, {
             ...dto,
             paymentMethod: BookingPaymentMethod.ONLINE,
         });
-        const quote = await this.bookingsRepository.quote(payload);
-        const referenceCode = this.generateQrSessionReference();
-        const expiresAt = quote.expiresAt ?? new Date(Date.now() + PaymentsService.QR_SESSION_TTL_MS);
+        const payment = await this.bookingsRepository.findLatestPaymentByBookingId(booking.id);
+        if (!payment) {
+            throw new NotFoundException('payment_not_found');
+        }
+
+        const referenceCode = booking.bookingCode;
+        const expiresAt = booking.expiresAt
+            ? new Date(booking.expiresAt)
+            : new Date(Date.now() + PaymentsService.QR_SESSION_TTL_MS);
+        const status =
+            payment.status === PaymentStatus.PAID || booking.status === BookingStatus.CONFIRMED
+                ? 'paid'
+                : 'pending';
 
         await this.cacheManager.set(this.getQrSessionCacheKey(referenceCode), {
             referenceCode,
-            actor: actor?.userId ? { userId: actor.userId, email: actor.email } : undefined,
-            payload,
-            totalAmount: quote.totalAmount,
+            totalAmount: booking.totalAmount,
             expiresAt: expiresAt.toISOString(),
-            status: 'pending',
+            status,
+            bookingCode: booking.bookingCode,
+            bookingId: booking.id,
+            bookingStatus: booking.status as BookingStatus,
+            paymentStatus: payment.status,
         }, PaymentsService.QR_SESSION_TTL_MS);
 
         return {
             referenceCode,
-            totalAmount: quote.totalAmount,
+            totalAmount: booking.totalAmount,
             expiresAt: expiresAt.toISOString(),
-            status: 'pending' as const,
+            status,
+            bookingCode: booking.bookingCode,
+            bookingId: booking.id,
         };
     }
 
     async getQrPaymentSessionStatus(referenceCode: string) {
-        const session = await this.getQrSession(referenceCode);
+        let session = await this.getQrSession(referenceCode);
         if (!session) {
-            throw new NotFoundException('payment_session_not_found');
+            const booking = await this.bookingsRepository.findEntityByCode(referenceCode);
+            if (!booking) {
+                throw new NotFoundException('payment_session_not_found');
+            }
+
+            const payment = await this.bookingsRepository.findLatestPaymentByBookingId(booking.bookingId);
+            if (!payment) {
+                throw new NotFoundException('payment_not_found');
+            }
+
+            session = {
+                referenceCode: booking.bookingCode,
+                totalAmount: Number(booking.totalAmount),
+                expiresAt: booking.expiresAt?.toISOString() ?? new Date(Date.now() + PaymentsService.QR_SESSION_TTL_MS).toISOString(),
+                status:
+                    payment.status === PaymentStatus.PAID || booking.status === BookingStatus.CONFIRMED
+                        ? 'paid'
+                        : 'pending',
+                bookingCode: booking.bookingCode,
+                bookingId: booking.bookingId,
+                bookingStatus: booking.status,
+                paymentStatus: payment.status,
+            };
         }
 
         const isExpired = new Date(session.expiresAt).getTime() < Date.now();
@@ -376,6 +406,9 @@ export class PaymentsService {
                 }
 
                 try {
+                    if (!qrSession.payload) {
+                        throw new BadRequestException('payment_session_payload_missing');
+                    }
                     const booking = await this.bookingsService.create(qrSession.actor, qrSession.payload);
                     const payment = await this.bookingsRepository.findLatestPaymentByBookingId(booking.id);
                     if (!payment) throw new NotFoundException('payment_not_found');

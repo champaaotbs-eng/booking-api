@@ -1,4 +1,4 @@
-import { Controller, ForbiddenException, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, ForbiddenException, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { RevenuesService } from './revenues.service';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterRevenueDto, SortRevenueDto } from './dto/query-revenue.dto';
@@ -30,5 +30,16 @@ export class RevenuesController {
             return this.revenuesService.getStats({ ...filters, companyId: user.busCompanyId });
         }
         return this.revenuesService.getStats(filters);
+    }
+
+    @Get('revenues/:id')
+    findDetail(@Req() req: any, @Param('id') id: string) {
+        const user = req.user;
+        if (!user?.adminId) throw new ForbiddenException();
+
+        if (user.busCompanyId) {
+            return this.revenuesService.findCompanyDetail(user.busCompanyId, id);
+        }
+        return this.revenuesService.findAdminDetail(id);
     }
 }

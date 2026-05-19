@@ -10,6 +10,9 @@ export class Role {
 
     type?: ADMIN_TYPE;
 
+    @Allow()
+    busCompanyId?: string | null;
+
     isActive: boolean;
 
     description: string;

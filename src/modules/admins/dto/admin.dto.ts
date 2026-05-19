@@ -36,6 +36,11 @@ export class UpdateAdminDto extends PartialType(OmitType(CreateAdminDto, ['passw
     @IsOptional()
     @IsString()
     avatarUrl?: string;
+
+    @IsOptional()
+    @IsString()
+    @MinLength(6)
+    password?: string;
 }
 
 export class ChangeAdminPasswordDto {

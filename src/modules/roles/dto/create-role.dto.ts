@@ -1,5 +1,5 @@
 import { I18nTranslations } from "@/generated/i18n.generated";
-import { IsNotEmpty, IsString, IsOptional, IsBoolean, IsArray, ValidateNested } from "class-validator";
+import { IsNotEmpty, IsString, IsOptional, IsBoolean, IsArray, ValidateNested, IsUUID } from "class-validator";
 import { i18nValidationMessage } from "nestjs-i18n";
 import { ADMIN_TYPE } from "utils/constants";
 
@@ -19,6 +19,10 @@ export class CreateRoleDto {
     @IsNotEmpty()
     @IsString()
     type: ADMIN_TYPE;
+
+    @IsOptional()
+    @IsUUID()
+    busCompanyId?: string;
 
     @IsOptional()
     @IsArray()

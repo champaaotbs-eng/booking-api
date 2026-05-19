@@ -156,7 +156,7 @@ export class DashboardService {
                 .addSelect('settlement.busCompanyId', 'companyId')
                 .addSelect('company.name', 'companyName')
                 .addSelect('settlement.periodFrom', 'periodFrom')
-                .addSelect('settlement.totalNet::float', 'totalNet')
+                .addSelect('settlement.total_net::float', 'totalNet')
                 .addSelect((subQuery) =>
                     subQuery
                         .select('COUNT(*)::int')
