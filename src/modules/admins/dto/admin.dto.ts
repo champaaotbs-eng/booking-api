@@ -8,7 +8,6 @@ import {
 import { i18nValidationMessage } from 'nestjs-i18n';
 import { I18nTranslations } from '@/generated/i18n.generated';
 import { PartialType, OmitType } from '@nestjs/mapped-types';
-import { ADMIN_TYPE } from 'utils/constants';
 
 export class CreateAdminDto {
     @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })

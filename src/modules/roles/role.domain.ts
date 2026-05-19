@@ -13,6 +13,9 @@ export class Role {
     @Allow()
     busCompanyId?: string | null;
 
+    @Allow()
+    assignedAdminCount?: number;
+
     isActive: boolean;
 
     description: string;

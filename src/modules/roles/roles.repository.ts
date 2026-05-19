@@ -61,6 +61,17 @@ export class RolesRepository {
 
         const totalItems = total;
         const totalPages = Math.ceil(totalItems / paginationOptions.limit);
+        const roleIds = entities.map((entity) => entity.roleId);
+        const assignedCounts = roleIds.length > 0
+            ? await this.dataSource.getRepository(AdminEntity)
+                .createQueryBuilder('admin')
+                .select('admin.role_id', 'roleId')
+                .addSelect('COUNT(*)', 'count')
+                .where('admin.role_id IN (:...roleIds)', { roleIds })
+                .groupBy('admin.role_id')
+                .getRawMany<{ roleId: string; count: string }>()
+            : [];
+        const assignedCountByRoleId = new Map(assignedCounts.map((item) => [item.roleId, Number(item.count)]));
 
         return {
             meta: {
@@ -69,7 +80,10 @@ export class RolesRepository {
                 totalPages,
                 totalItems,
             },
-            result: entities.map(RoleMapper.toDomain),
+            result: entities.map((entity) => ({
+                ...RoleMapper.toDomain(entity),
+                assignedAdminCount: assignedCountByRoleId.get(entity.roleId) ?? 0,
+            })),
         };
     }
 
@@ -101,7 +115,19 @@ export class RolesRepository {
 
         const entity = await this.repo.findOne({ where });
 
-        return entity ? RoleMapper.toDomain(entity) : null;
+        if (!entity) {
+            return null;
+        }
+
+        const assignedAdminCount = await this.dataSource.getRepository(AdminEntity)
+            .createQueryBuilder('admin')
+            .where('admin.role_id = :roleId', { roleId: id })
+            .getCount();
+
+        return {
+            ...RoleMapper.toDomain(entity),
+            assignedAdminCount,
+        };
     }
 
     async update(id: Role['roleId'], payload: UpdateRoleDto, companyId?: string | null): Promise<Role> {
@@ -150,14 +176,10 @@ export class RolesRepository {
             throw new NotFoundException('Role not found');
         }
 
-        const adminCount = await this.dataSource.getRepository(AdminEntity).count({
-            where: {
-                role: {
-                    roleId: id,
-                },
-            },
-            relations: ['role'],
-        });
+        const adminCount = await this.dataSource.getRepository(AdminEntity)
+            .createQueryBuilder('admin')
+            .where('admin.role_id = :roleId', { roleId: id })
+            .getCount();
         if (adminCount > 0) {
             throw new BadRequestException('Role is assigned to users');
         }

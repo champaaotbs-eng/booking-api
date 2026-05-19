@@ -31,18 +31,81 @@ export class AdminsRepository {
         sortOptions?: SortAdminDto[] | null;
         paginationOptions: IPaginationOptions;
     }): Promise<PaginationResponseDto<Admin>> {
-        const where: FindOptionsWhere<AdminEntity> = {};
-        if (filterOptions?.username) where.username = ILike(`%${filterOptions.username}%`);
-        if (filterOptions?.fullName) where.fullName = ILike(`%${filterOptions.fullName}%`);
-        if (filterOptions?.isActive !== undefined) where.isActive = filterOptions.isActive;
-        if (filterOptions?.roleId) where.role = { roleId: filterOptions.roleId } as RoleEntity;
+        const qb = this.adminsRepository
+            .createQueryBuilder('admin')
+            .leftJoinAndSelect('admin.role', 'role')
+            .where('admin.deletedAt IS NULL');
 
-        const [entities, total] = await this.adminsRepository.findAndCount({
-            skip: (paginationOptions.page - 1) * paginationOptions.limit,
-            take: paginationOptions.limit,
-            where,
-            order: sortOptions?.reduce((acc, s) => ({ ...acc, [s.orderBy]: s.order }), { createdAt: 'DESC' }),
+        if (filterOptions?.username && filterOptions?.fullName && filterOptions.username === filterOptions.fullName) {
+            qb.andWhere('(admin.username ILIKE :search OR admin.fullName ILIKE :search)', {
+                search: `%${filterOptions.username}%`,
+            });
+        } else {
+            if (filterOptions?.username) {
+                qb.andWhere('admin.username ILIKE :username', { username: `%${filterOptions.username}%` });
+            }
+            if (filterOptions?.fullName) {
+                qb.andWhere('admin.fullName ILIKE :fullName', { fullName: `%${filterOptions.fullName}%` });
+            }
+        }
+
+        if (filterOptions?.isActive !== undefined) {
+            qb.andWhere('admin.isActive = :isActive', { isActive: filterOptions.isActive });
+        }
+        if (filterOptions?.roleId) {
+            qb.andWhere('role.roleId = :roleId', { roleId: filterOptions.roleId });
+        }
+        if (filterOptions?.busCompanyId) {
+            qb.innerJoin(
+                BusCompanyAdminEntity,
+                'companyAdminFilter',
+                'companyAdminFilter.adminId = admin.adminId AND companyAdminFilter.companyId = :companyId',
+                { companyId: filterOptions.busCompanyId },
+            );
+        }
+
+        const sortableColumns: Record<string, string> = {
+            username: 'admin.username',
+            fullName: 'admin.fullName',
+            isActive: 'admin.isActive',
+            createdAt: 'admin.createdAt',
+            updatedAt: 'admin.updatedAt',
+        };
+
+        if (sortOptions?.length) {
+            sortOptions.forEach((sort, index) => {
+                const sortColumn = sortableColumns[String(sort.orderBy)] ?? 'admin.createdAt';
+                if (index === 0) {
+                    qb.orderBy(sortColumn, sort.order);
+                } else {
+                    qb.addOrderBy(sortColumn, sort.order);
+                }
+            });
+        } else {
+            qb.orderBy('admin.createdAt', 'DESC');
+        }
+
+        qb.skip((paginationOptions.page - 1) * paginationOptions.limit).take(paginationOptions.limit);
+        const [entities, total] = await qb.getManyAndCount();
+        const adminIds = entities.map((entity) => entity.adminId);
+        const memberships = adminIds.length > 0
+            ? await this.busCompanyAdminRepository.find({
+                where: { adminId: In(adminIds) },
+                order: { createdAt: 'ASC' },
+            })
+            : [];
+
+        const firstMembershipByAdminId = new Map<string, string | null>();
+        memberships.forEach((membership) => {
+            if (!firstMembershipByAdminId.has(membership.adminId)) {
+                firstMembershipByAdminId.set(membership.adminId, membership.companyId);
+            }
         });
+
+        const admins = entities.map((entity) => ({
+            ...AdminMapper.toDomain(entity),
+            busCompanyId: firstMembershipByAdminId.get(entity.adminId) ?? null,
+        }));
 
         return {
             meta: {
@@ -51,7 +114,7 @@ export class AdminsRepository {
                 totalPages: Math.ceil(total / paginationOptions.limit),
                 totalItems: total,
             },
-            result: entities.map(AdminMapper.toDomain),
+            result: admins,
         };
     }
 
@@ -148,6 +211,20 @@ export class AdminsRepository {
     async findById(id: Admin['adminId']): Promise<NullableType<Admin>> {
         const entity = await this.adminsRepository.findOne({ where: { adminId: id } });
         return entity ? AdminMapper.toDomain(entity) : null;
+    }
+
+    async findCompanyMembershipByAdminId(adminId: string): Promise<NullableType<BusCompanyAdminEntity>> {
+        return this.busCompanyAdminRepository.findOne({
+            where: { adminId },
+            order: { createdAt: 'ASC' },
+        });
+    }
+
+    async findCompanyMembershipsByAdminId(adminId: string): Promise<BusCompanyAdminEntity[]> {
+        return this.busCompanyAdminRepository.find({
+            where: { adminId },
+            order: { createdAt: 'ASC' },
+        });
     }
 
     async findCompanyStaffById(companyId: string, adminId: string): Promise<NullableType<Admin>> {
@@ -247,5 +324,19 @@ export class AdminsRepository {
 
     async removeCompanyStaff(companyId: string, adminId: string): Promise<void> {
         await this.adminsRepository.update({ adminId }, { isActive: false });
+    }
+
+    async syncCompanyMembership(adminId: string, companyId?: string | null, position = BusCompanyAdminPosition.STAFF): Promise<void> {
+        await this.busCompanyAdminRepository.delete({ adminId });
+
+        if (!companyId) {
+            return;
+        }
+
+        await this.busCompanyAdminRepository.save(this.busCompanyAdminRepository.create({
+            adminId,
+            companyId,
+            position,
+        }));
     }
 }

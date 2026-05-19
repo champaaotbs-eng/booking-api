@@ -5,11 +5,10 @@ import { AdminsService } from './admins.service';
 import { AdminsController } from './admins.controller';
 import { AdminsRepository } from './admins.repository';
 import { BusCompanyAdminEntity } from 'modules/bus-companies/entities/bus-company-admin.entity';
-import { BusCompaniesModule } from 'modules/bus-companies/bus-companies.module';
 import { RolesModule } from 'modules/roles/roles.module';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([AdminEntity, BusCompanyAdminEntity]), BusCompaniesModule, RolesModule],
+    imports: [TypeOrmModule.forFeature([AdminEntity, BusCompanyAdminEntity]), RolesModule],
     controllers: [AdminsController],
     providers: [AdminsService, AdminsRepository],
     exports: [AdminsService, AdminsRepository],

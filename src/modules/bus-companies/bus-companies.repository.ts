@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, ILike, Repository } from 'typeorm';
 import { BusCompanyEntity } from './entities/bus-company.entity';
@@ -16,6 +16,7 @@ import { IPaginationOptions } from '@/utils/types/pagination-options';
 import { PaginationResponseDto } from '@/utils/types/pagination-response.dto';
 import { NullableType } from '@/utils/types/nullable.type';
 import { AdminEntity } from '../admins/entities/admin.entity';
+import { BusCompanyAdminPosition } from './entities/bus-company-admin.entity';
 
 @Injectable()
 export class BusCompaniesRepository {
@@ -86,6 +87,7 @@ export class BusCompaniesRepository {
     }
 
     async create(dto: CreateBusCompanyDto): Promise<BusCompany> {
+        this.assertSingleOwnerAdmin(dto.companyAdmins);
         const saved = await this.repo.save(this.repo.create({ ...dto, serviceFee: dto.serviceFee ?? 0 }));
         const adminEntities = dto.companyAdmins?.map(admin => this.adminRepo.create({ companyId: saved.busCompanyId, adminId: admin.adminId, position: admin.position })) || [];
         await this.adminRepo.save(adminEntities);
@@ -94,13 +96,23 @@ export class BusCompaniesRepository {
 
     async update(id: string, dto: UpdateBusCompanyDto): Promise<NullableType<BusCompany>> {
         if (dto && dto.companyAdmins) {
+            this.assertSingleOwnerAdmin(dto.companyAdmins);
             const currentAdmins = await this.adminRepo.find({ where: { companyId: id } });
-            const currentAdminIds = currentAdmins.map(a => a.adminId);
+            const currentAdminsById = new Map(currentAdmins.map((admin) => [admin.adminId, admin]));
+            const nextAdminsById = new Map(dto.companyAdmins.map((admin) => [admin.adminId, admin]));
             const newAdminIds = dto.companyAdmins.map(a => a.adminId);
-            const adminsToAdd = dto.companyAdmins.filter(a => !currentAdminIds.includes(a.adminId));
             const adminsToRemove = currentAdmins.filter(a => !newAdminIds.includes(a.adminId));
             await this.adminRepo.remove(adminsToRemove);
-            const adminEntities = adminsToAdd.map(admin => this.adminRepo.create({ companyId: id, adminId: admin.adminId, position: admin.position }));
+
+            const adminEntities = dto.companyAdmins.map((admin) => {
+                const currentAdmin = currentAdminsById.get(admin.adminId);
+                return this.adminRepo.create({
+                    companyId: id,
+                    adminId: admin.adminId,
+                    position: admin.position,
+                    createdAt: currentAdmin?.createdAt,
+                });
+            });
             await this.adminRepo.save(adminEntities);
             delete dto.companyAdmins;
         }
@@ -131,5 +143,15 @@ export class BusCompaniesRepository {
 
     async removeAdmin(companyId: string, adminId: string): Promise<void> {
         await this.adminRepo.delete({ companyId, adminId });
+    }
+
+    private assertSingleOwnerAdmin(companyAdmins?: AddBusCompanyAdminDto[]) {
+        if (!companyAdmins || companyAdmins.length !== 1) {
+            throw new BadRequestException('company_must_have_exactly_one_owner_admin');
+        }
+
+        if (companyAdmins[0].position !== BusCompanyAdminPosition.OWNER) {
+            throw new BadRequestException('company_owner_admin_must_use_owner_position');
+        }
     }
 }
