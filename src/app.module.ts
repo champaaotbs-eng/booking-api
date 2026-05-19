@@ -60,6 +60,7 @@ import { DashboardModule } from 'modules/dashboard/dashboard.module';
         cloudinaryConfig,
         mailerConfig,
         otpConfig,
+        paymentConfig
       ],
       envFilePath: ['.env'],
     }),
