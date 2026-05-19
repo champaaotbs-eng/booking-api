@@ -10,8 +10,7 @@ export class PaymentMapper {
         domain.provider = raw.provider;
         domain.method = raw.method;
         domain.evidence = raw.evidence;
-        domain.confirmedByAdminId = raw.confirmedByAdminId;
-        domain.confirmedCompanyId = raw.confirmedCompanyId;
+        domain.confirmedBy = raw.confirmedBy;
         domain.confirmedAt = raw.confirmedAt;
         domain.confirmationNote = raw.confirmationNote;
         domain.collectedAmount = raw.collectedAmount === undefined || raw.collectedAmount === null
@@ -22,8 +21,6 @@ export class PaymentMapper {
             : Number(raw.repayAmount);
         domain.amount = Number(raw.amount);
         domain.status = raw.status;
-        domain.transactionCode = raw.transactionCode;
-        domain.gatewayResponse = raw.gatewayResponse;
         domain.createdAt = raw.createdAt;
         domain.expiresAt = raw.expiresAt;
         domain.completedAt = raw.completedAt;

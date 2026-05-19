@@ -231,7 +231,6 @@ export class BookingsRepository {
     async markPaymentPaid(paymentId: string, gatewayResponse?: Record<string, unknown>): Promise<void> {
         await this.paymentRepo.update({ paymentId }, {
             status: PaymentStatus.PAID,
-            gatewayResponse,
             completedAt: new Date(),
         });
     }

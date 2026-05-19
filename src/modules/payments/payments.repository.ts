@@ -40,8 +40,6 @@ export class PaymentsRepository {
     async markPaid(id: string, transactionCode: string, gatewayResponse: Record<string, unknown>): Promise<void> {
         await this.repo.update({ paymentId: id }, {
             status: PaymentStatus.PAID,
-            transactionCode,
-            gatewayResponse,
             completedAt: new Date(),
         });
     }
@@ -49,7 +47,6 @@ export class PaymentsRepository {
     async markFailed(id: string, gatewayResponse: Record<string, unknown>): Promise<void> {
         await this.repo.update({ paymentId: id }, {
             status: PaymentStatus.FAILED,
-            gatewayResponse,
             completedAt: new Date(),
         });
     }
@@ -69,8 +66,7 @@ export class PaymentsRepository {
         await this.repo.update({ paymentId: id }, {
             status: PaymentStatus.CONFIRMED_ON_BOARD,
             evidence: input.evidence,
-            confirmedByAdminId: input.staffAdminId,
-            confirmedCompanyId: input.companyId,
+            confirmedBy: input.staffAdminId,
             confirmedAt: input.confirmedAt,
             confirmationNote: input.note,
             collectedAmount: input.collectedAmount,

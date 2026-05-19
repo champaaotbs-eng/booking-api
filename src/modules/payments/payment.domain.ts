@@ -8,7 +8,7 @@ export class Payment {
     @Allow() provider?: PaymentProvider;
     @Allow() method?: PaymentMethod;
     @Allow() evidence?: string;
-    @Allow() confirmedByAdminId?: string;
+    @Allow() confirmedBy?: string;
     @Allow() confirmedCompanyId?: string;
     @Allow() confirmedAt?: Date;
     @Allow() confirmationNote?: string;

@@ -59,11 +59,8 @@ export class PaymentEntity {
     @Column({ name: 'evidence', nullable: true })
     evidence?: string;
 
-    @Column({ name: 'confirmed_by_admin_id', nullable: true })
-    confirmedByAdminId?: string;
-
-    @Column({ name: 'confirmed_company_id', nullable: true })
-    confirmedCompanyId?: string;
+    @Column({ name: 'confirmed_by', nullable: true })
+    confirmedBy?: string;
 
     @Column({ name: 'confirmed_at', type: 'timestamptz', nullable: true })
     confirmedAt?: Date;
@@ -82,12 +79,6 @@ export class PaymentEntity {
 
     @Column({ name: 'status', default: PaymentStatus.PENDING })
     status: PaymentStatus;
-
-    @Column({ name: 'transaction_code', nullable: true })
-    transactionCode?: string;
-
-    @Column({ type: 'jsonb', nullable: true })
-    gatewayResponse?: Record<string, unknown>;
 
     @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
     createdAt: Date;
