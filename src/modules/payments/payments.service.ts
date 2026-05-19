@@ -197,7 +197,7 @@ export class PaymentsService {
         const content = [input.content, input.description]
             .filter((value) => Boolean(value))
             .join(' ');
-        const match = content.match(/BK-?\d{8}-?[A-Z0-9]{5}/i);
+        const match = content.match(/BK?\d{8}?[A-Z0-9]{5}/i);
         return match ? match[0].toUpperCase().replace(/-/g, '') : null;
     }
 
