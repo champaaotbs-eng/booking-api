@@ -53,6 +53,10 @@ class EnvironmentVariablesValidator {
     @IsInt()
     @IsOptional()
     BOOKING_CANCEL_CUTOFF_HOURS: number
+
+    @IsInt()
+    @IsOptional()
+    BOOKING_PAYMENT_HOLD_MINUTES: number
 }
 
 export default registerAs<AppConfig>('app', () => {
@@ -68,6 +72,9 @@ export default registerAs<AppConfig>('app', () => {
         bookingCancelCutoffHours: process.env.BOOKING_CANCEL_CUTOFF_HOURS
             ? parseInt(process.env.BOOKING_CANCEL_CUTOFF_HOURS, 10)
             : 3,
+        bookingPaymentHoldMinutes: process.env.BOOKING_PAYMENT_HOLD_MINUTES
+            ? parseInt(process.env.BOOKING_PAYMENT_HOLD_MINUTES, 10)
+            : 10,
         port: process.env.APP_PORT
             ? parseInt(process.env.APP_PORT, 10)
             : process.env.PORT

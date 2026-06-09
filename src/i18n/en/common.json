@@ -1,3 +1,4 @@
 {
-    "NOT_FOUND": "{entity} not found"
+    "NOT_FOUND": "{entity} not found",
+    "seat_legend_held": "Held"
 }

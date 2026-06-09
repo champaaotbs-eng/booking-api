@@ -10,6 +10,7 @@ import { QueryDto } from '@/utils/types/query.dto';
 import { CustomerSearchTripsDto, FilterTripDto, SortTripDto } from './dto/query-trip.dto';
 import { CreateTripDto, SeatPriceDto, UpdateTripDto } from './dto/trip.dto';
 import { RouteStopType } from 'modules/routes/entities/route-stop.entity';
+import { SeatHoldsService } from '@/modules/seat-holds/seat-holds.service';
 
 @Injectable()
 export class TripsService {
@@ -17,6 +18,7 @@ export class TripsService {
         private readonly tripsRepository: TripsRepository,
         private readonly seatLayoutsRepository: SeatLayoutsRepository,
         private readonly routesRepository: RoutesRepository,
+        private readonly seatHoldsService: SeatHoldsService,
     ) { }
 
     findAll(query: QueryDto<FilterTripDto, SortTripDto>) {
@@ -233,15 +235,23 @@ export class TripsService {
     async getSeatAvailability(tripId: string, busVersionId: string, basePrice: number) {
         const allSeats = await this.seatLayoutsRepository.getSeatsByBusVersion(busVersionId);
         const bookedSeatIds = await this.tripsRepository.getBookedSeatIds(tripId);
+        const heldSeatIds = await this.seatHoldsService.getHeldSeatIds(tripId);
         const tripSeats = await this.tripsRepository.getTripSeats(tripId);
         const priceMap = new Map<string, number>();
         for (const ts of tripSeats) priceMap.set(ts.seatId, ts.price);
 
-        return allSeats.map((seat) => ({
-            ...seat,
-            price: priceMap.has(seat.seatId) ? priceMap.get(seat.seatId) : basePrice,
-            isAvailable: !bookedSeatIds.includes(seat.seatId),
-        }));
+        return allSeats.map((seat) => {
+            const isBooked = bookedSeatIds.includes(seat.seatId);
+            const isHeld = heldSeatIds.includes(seat.seatId);
+
+            return {
+                ...seat,
+                price: priceMap.has(seat.seatId) ? priceMap.get(seat.seatId) : basePrice,
+                status: isHeld ? 'held' : isBooked ? 'booked' : 'available',
+                isHeld,
+                isAvailable: !isBooked && !isHeld,
+            };
+        });
     }
 
     private async buildTripSeatSeeds(

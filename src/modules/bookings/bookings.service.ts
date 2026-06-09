@@ -67,7 +67,7 @@ export class BookingsService {
     async prepareCreatePayload(
         actor: { userId?: string; email?: string } | undefined,
         dto: CreateBookingDto,
-    ): Promise<CreateBookingDto> {
+    ): Promise<{ payload: CreateBookingDto; userId: string | null }> {
         const normalizedEmail = dto.passengerEmail.trim();
         let normalizedPhone: string;
         try {
@@ -87,23 +87,26 @@ export class BookingsService {
             if (actorEmail && actorEmail !== normalizedEmail.toLowerCase()) {
                 throw new ForbiddenException('booking_email_mismatch_requires_reauth');
             }
-            return payload;
+            return { payload, userId: actor.userId };
         }
 
         const existingUser = await this.usersService.findByEmail(normalizedEmail).catch(() => null);
         if (existingUser) {
+            if (existingUser.provider === 'booking-phone' && !existingUser.isVerified) {
+                return { payload, userId: existingUser.userId };
+            }
             throw new ForbiddenException('email_already_registered_login_required');
         }
 
-        return payload;
+        return { payload, userId: null };
     }
 
     async create(
         actor: { userId?: string; email?: string } | undefined,
         dto: CreateBookingDto,
     ) {
-        const payload = await this.prepareCreatePayload(actor, dto);
-        return this.bookingsRepository.create(actor?.userId ?? null, payload);
+        const { payload, userId } = await this.prepareCreatePayload(actor, dto);
+        return this.bookingsRepository.create(userId, payload);
     }
 
     createCompany(companyId: string | undefined, dto: CreateBookingDto) {
@@ -143,6 +146,31 @@ export class BookingsService {
 
         await this.bookingsRepository.cancel(id);
         return this.bookingsRepository.findById(id);
+    }
+
+    async cancelPaymentByCode(bookingCode: string, passengerEmail: string) {
+        const booking = await this.bookingsRepository.findByCode(bookingCode);
+        if (!booking) throw new NotFoundException('booking_not_found');
+
+        if (booking.passengerEmail?.trim().toLowerCase() !== passengerEmail.trim().toLowerCase()) {
+            throw new ForbiddenException('forbidden_booking_access');
+        }
+
+        const cancellableStatuses: BookingStatus[] = [
+            BookingStatus.PENDING_PAYMENT,
+            BookingStatus.RESERVED,
+        ];
+        if (!cancellableStatuses.includes(booking.status)) {
+            throw new ForbiddenException('booking_status_not_cancellable');
+        }
+
+        const latestPayment = await this.bookingsRepository.findLatestPaymentByBookingId(booking.id);
+        if (latestPayment?.status === PaymentStatus.PENDING) {
+            await this.bookingsRepository.markPaymentExpired(latestPayment.paymentId);
+        }
+
+        await this.bookingsRepository.cancel(booking.id);
+        return this.bookingsRepository.findById(booking.id);
     }
 
     async checkPaymentStatusByCode(bookingCode: string) {

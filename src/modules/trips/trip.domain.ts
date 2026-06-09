@@ -43,7 +43,9 @@ export class SeatAvailability {
     @Allow() col: number;
     @Allow() floor: number;
     @Allow() price: number;
+    @Allow() status: 'available' | 'held' | 'booked';
     @Allow() isAvailable: boolean;
+    @Allow() isHeld?: boolean;
 }
 
 export class TripStop {

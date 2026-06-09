@@ -38,6 +38,7 @@ export type I18nTranslations = {
     };
     "common": {
         "NOT_FOUND": string;
+        "seat_legend_held": string;
     };
     "cron": {
         "SUCCESS": {

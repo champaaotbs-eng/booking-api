@@ -8,4 +8,5 @@ export type AppConfig = {
     timeZone: string;
     cacheTTL: number;
     bookingCancelCutoffHours: number;
+    bookingPaymentHoldMinutes: number;
 };

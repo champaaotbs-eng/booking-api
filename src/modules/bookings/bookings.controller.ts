@@ -3,7 +3,7 @@ import { BookingsService } from './bookings.service';
 import { Public, UserInfo } from '@/decorator/customize.decorator';
 import { QueryDto } from '@/utils/types/query.dto';
 import { FilterBookingDto, SortBookingDto } from './dto/query-booking.dto';
-import { CreateBookingDto } from './dto/booking.dto';
+import { CancelPaymentBookingDto, CreateBookingDto } from './dto/booking.dto';
 
 @Controller()
 export class BookingsController {
@@ -37,6 +37,18 @@ export class BookingsController {
     @Get('bookings/public/:code/payment-status')
     checkPaymentStatus(@Param('code') code: string) {
         return this.bookingsService.checkPaymentStatusByCode(code);
+    }
+
+    @Public()
+    @Patch('bookings/public/:code/cancel-payment')
+    cancelPayment(@Param('code') code: string, @Body() dto: CancelPaymentBookingDto) {
+        return this.bookingsService.cancelPaymentByCode(code, dto.passengerEmail);
+    }
+
+    @Public()
+    @Post('bookings/public/:code/cancel-payment')
+    cancelPaymentBeacon(@Param('code') code: string, @Body() dto: CancelPaymentBookingDto) {
+        return this.bookingsService.cancelPaymentByCode(code, dto.passengerEmail);
     }
 
     @Patch('bookings/:id/cancel')

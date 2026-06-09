@@ -48,6 +48,7 @@ import { AdminsModule } from './modules/admins/admins.module';
 import { FilesModule } from 'modules/files/files.module';
 import { StationsModule } from 'modules/stations/stations.module';
 import { DashboardModule } from 'modules/dashboard/dashboard.module';
+import { SeatHoldsModule } from './modules/seat-holds/seat-holds.module';
 
 @Module({
   imports: [
@@ -122,6 +123,7 @@ import { DashboardModule } from 'modules/dashboard/dashboard.module';
     AdminsModule,
     FilesModule,
     DashboardModule,
+    SeatHoldsModule,
   ],
   controllers: [AppController],
   providers: [

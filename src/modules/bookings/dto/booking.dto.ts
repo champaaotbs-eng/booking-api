@@ -34,10 +34,20 @@ export class CreateBookingDto {
     @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
     @IsString()
     passengerPhone: string;
+
+    @IsOptional()
+    @IsString()
+    seatHoldToken?: string;
 }
 
 export class CancelBookingDto {
     @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
     @MinLength(5)
     reason: string;
+}
+
+export class CancelPaymentBookingDto {
+    @IsNotEmpty({ message: i18nValidationMessage<I18nTranslations>('validation.NOT_EMPTY') })
+    @IsEmail({}, { message: i18nValidationMessage<I18nTranslations>('validation.INVALID_EMAIL') })
+    passengerEmail: string;
 }

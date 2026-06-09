@@ -15,8 +15,10 @@ import { NullableType } from '@/utils/types/nullable.type';
 import { randomBytes } from 'crypto';
 import { PaymentEntity, PaymentStatus, PaymentType } from '@/modules/payments/entities/payment.entity';
 import { UserEntity } from '@/modules/users/entities/user.entity';
+import { SeatHoldsService } from '@/modules/seat-holds/seat-holds.service';
+import { ConfigService } from '@nestjs/config';
+import { AllConfigType } from '@/config/config.type';
 
-const PAYMENT_EXPIRY_MINUTES = 15;
 const ACTIVE_BOOKING_STATUSES = [
     BookingStatus.PENDING_PAYMENT,
     BookingStatus.RESERVED,
@@ -34,6 +36,8 @@ export class BookingsRepository {
         @InjectRepository(PaymentEntity)
         private readonly paymentRepo: Repository<PaymentEntity>,
         private readonly dataSource: DataSource,
+        private readonly seatHoldsService: SeatHoldsService,
+        private readonly configService: ConfigService<AllConfigType>,
     ) { }
 
     private normalizeBookingCode(bookingCode: string): string {
@@ -254,7 +258,7 @@ export class BookingsRepository {
     }
 
     async create(userId: string | null, dto: CreateBookingDto, companyId?: string): Promise<Booking> {
-        return this.dataSource.transaction(async (manager) => {
+        const result = await this.dataSource.transaction(async (manager) => {
             let resolvedUserId = userId ?? undefined;
 
             if (!resolvedUserId) {
@@ -315,6 +319,12 @@ export class BookingsRepository {
             const result = BookingMapper.toDomain(savedBooking, savedSeats);
             return result;
         });
+
+        if (dto.seatHoldToken) {
+            await this.seatHoldsService.releaseSeats(dto.tripId, dto.seatIds, dto.seatHoldToken);
+        }
+
+        return result;
     }
 
     private async resolveBookingDraft(
@@ -327,6 +337,12 @@ export class BookingsRepository {
         expiresAt?: Date
         status: BookingStatus
     }> {
+        await this.seatHoldsService.assertSeatsNotHeldByOther(
+            dto.tripId,
+            dto.seatIds,
+            dto.seatHoldToken,
+        );
+
         const trip = await manager.findOne(TripEntity, {
             where: { tripId: dto.tripId },
             lock: { mode: 'pessimistic_write' },
@@ -390,9 +406,10 @@ export class BookingsRepository {
             return sum + Number(seat!.price);
         }, 0);
 
+        const paymentHoldMinutes = this.configService.get('app.bookingPaymentHoldMinutes', { infer: true }) ?? 10;
         const expiresAt =
             dto.paymentMethod === PaymentMethod.ONLINE
-                ? new Date(Date.now() + PAYMENT_EXPIRY_MINUTES * 60 * 1000)
+                ? new Date(Date.now() + paymentHoldMinutes * 60 * 1000)
                 : undefined;
 
         const status =
