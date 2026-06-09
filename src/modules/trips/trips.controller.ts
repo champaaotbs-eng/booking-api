@@ -38,8 +38,8 @@ export class TripsController {
 
     @Get('/:id')
     @Public()
-    findOne(@Param('id') id: string) {
-        return this.tripsService.findOne(id);
+    findOne(@Param('id') id: string, @Query('seatHoldToken') seatHoldToken?: string) {
+        return this.tripsService.findOne(id, seatHoldToken);
     }
 
     @Post('')

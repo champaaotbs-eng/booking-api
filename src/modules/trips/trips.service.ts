@@ -39,13 +39,13 @@ export class TripsService {
         });
     }
 
-    async findOne(id: string) {
+    async findOne(id: string, holderId?: string) {
         const trip = await this.tripsRepository.findById(id);
         if (!trip) throw new NotFoundException('trip_not_found');
 
         const [seatAvailability, hasBookings, bookingsBySeat] = await Promise.all([
             trip.busVersionId
-                ? this.getSeatAvailability(id, trip.busVersionId, trip.basePrice)
+                ? this.getSeatAvailability(id, trip.busVersionId, trip.basePrice, holderId)
                 : Promise.resolve([]),
             this.tripsRepository.hasActiveBookings(id),
             this.tripsRepository.getBookingsBySeat(id),
@@ -232,10 +232,10 @@ export class TripsService {
         return { removed: true };
     }
 
-    async getSeatAvailability(tripId: string, busVersionId: string, basePrice: number) {
+    async getSeatAvailability(tripId: string, busVersionId: string, basePrice: number, holderId?: string) {
         const allSeats = await this.seatLayoutsRepository.getSeatsByBusVersion(busVersionId);
         const bookedSeatIds = await this.tripsRepository.getBookedSeatIds(tripId);
-        const heldSeatIds = await this.seatHoldsService.getHeldSeatIds(tripId);
+        const heldSeatIds = await this.seatHoldsService.getHeldSeatIds(tripId, holderId);
         const tripSeats = await this.tripsRepository.getTripSeats(tripId);
         const priceMap = new Map<string, number>();
         for (const ts of tripSeats) priceMap.set(ts.seatId, ts.price);
